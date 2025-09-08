@@ -1,0 +1,17 @@
+(set-logic LIA)
+
+; Function to synthesize.  When no grammar is specified, a pre-defined grammar is used.
+(synth-fun max2 ((x Int) (y Int)) Int
+)
+
+(declare-var x Int)
+(declare-var y Int)
+
+; Constraints
+(constraint (>= (max2 x y) x))
+(constraint (>= (max2 x y) y))
+(constraint (or (= x (max2 x y))
+				(= y (max2 x y))))
+
+
+(check-synth)
