@@ -8,8 +8,6 @@ def convert_declare_var_to_fun(sygus_content: str) -> str:
     replacement = r'(declare-fun \1 () \2)'
     return re.sub(pattern, replacement, sygus_content)
 
-import re
-
 def replace_synth_fun_with_solution(content: str, solution: str) -> str:
     """
     Replace the (synth-fun ...) block (including grammar definitions) with the provided solution,

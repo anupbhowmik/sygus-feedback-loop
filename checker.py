@@ -54,7 +54,7 @@ def check_sygus_solution(problem_file: str, solution: str) -> str:
 
 
 if __name__ == "__main__":
-    problem_file = "./example-pair/1.sy"
-    candidate_solution = """(define-fun max2 ((x Int) (y Int)) Int (ite (<= y x) x y))"""  # Example solution
+    problem_file = "./example-pair/diff.sy"
+    candidate_solution = """(define-fun f ((x Int) (y Int)) Int (ite (<= x y) (- y x) (- x y)))"""  # Example solution
     output = check_sygus_solution(problem_file, candidate_solution)
     print(f"Output: {output}")
