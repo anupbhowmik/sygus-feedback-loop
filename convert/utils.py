@@ -8,6 +8,42 @@ def convert_declare_var_to_fun(sygus_content: str) -> str:
     replacement = r'(declare-fun \1 () \2)'
     return re.sub(pattern, replacement, sygus_content)
 
+import re
+
+def replace_synth_fun_with_solution(content: str, solution: str) -> str:
+    """
+    Replace the (synth-fun ...) block (including grammar definitions) with the provided solution,
+    and replace (check-synth) with (check-sat).
+
+    Assumptions:
+    1. There is only one (synth-fun ...) block in the content
+    2. Ignores grammar definitions after synth-fun
+    """
+    lines = content.splitlines(keepends=True)
+    modified_lines = []
+    replaced = False
+    skipping = False
+    paren_count = 0
+
+    for line in lines:
+        if not replaced and "(synth-fun" in line:
+            # Start skipping lines until the synth-fun block ends
+            skipping = True
+            paren_count = line.count('(') - line.count(')')
+            modified_lines.append(solution + "\n")
+            replaced = True
+            continue
+        if skipping:
+            paren_count += line.count('(') - line.count(')')
+            if paren_count <= 0:
+                skipping = False
+            continue
+        if "(check-synth)" in line:
+            modified_lines.append(line.replace("(check-synth)", "(check-sat)"))
+        else:
+            modified_lines.append(line)
+    return "".join(modified_lines)
+
 def constraints_to_assert(sygus_content: str) -> str:
     """
     Replaces all SyGuS constraint blocks (even multi-line, nested) with a single SMT-LIB assertion

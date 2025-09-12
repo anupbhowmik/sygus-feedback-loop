@@ -2,7 +2,7 @@ import subprocess
 import tempfile
 import os
 
-from convert.utils import convert_declare_var_to_fun, constraints_to_assert
+from convert.utils import convert_declare_var_to_fun, constraints_to_assert, replace_synth_fun_with_solution
 
 def check_sygus_solution(problem_file: str, solution: str) -> str:
     print(f"Reading problem file: {problem_file}")
@@ -15,27 +15,8 @@ def check_sygus_solution(problem_file: str, solution: str) -> str:
     # Convert constraints to a single assertion
     content = constraints_to_assert(content)
 
-    # Replace the entire line containing (synth-fun with the solution
-    lines = content.splitlines(keepends=True)
-    modified_lines = []
-    replaced = False
-    skip_next = False
-    for line in lines:
-        if skip_next:
-            skip_next = False
-            continue
-        if not replaced and "(synth-fun" in line:
-            modified_lines.append(solution + "\n")
-            replaced = True
-            skip_next = True  # Skip the next line (assumed to be ')')
-        else:
-            # Replace (check-synth) with (check-sat)
-            if "(check-synth)" in line:
-                modified_lines.append(line.replace("(check-synth)", "(check-sat)"))
-            else:
-                modified_lines.append(line)
-    modified = "".join(modified_lines)
-
+    # Replace (synth-fun ...) with the provided solution and (check-synth) with (check-sat)
+    modified = replace_synth_fun_with_solution(content, solution)
 
     with tempfile.NamedTemporaryFile(suffix=".smt2", delete=False, mode="w", encoding="utf-8") as tmp:
         tmp.write(modified)
@@ -73,7 +54,7 @@ def check_sygus_solution(problem_file: str, solution: str) -> str:
 
 
 if __name__ == "__main__":
-    problem_file = "./example-pair/max.sy"
-    candidate_solution = """(define-fun max2 ((x Int) (y Int)) Int (ite (>= (+ x (* (- 1) y)) 0) x y))"""  # Example solution
+    problem_file = "./example-pair/1.sy"
+    candidate_solution = """(define-fun max2 ((x Int) (y Int)) Int (ite (<= y x) x y))"""  # Example solution
     output = check_sygus_solution(problem_file, candidate_solution)
     print(f"Output: {output}")
