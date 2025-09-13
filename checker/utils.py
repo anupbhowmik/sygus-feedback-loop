@@ -1,7 +1,6 @@
 import subprocess
 import tempfile
 import os
-import sys
 
 from convert.utils import convert_declare_var_to_fun, constraints_to_assert, replace_synth_fun_with_solution
 
@@ -60,16 +59,3 @@ def check_sygus_solution(problem_file: str, solution: str, output_file: str = No
 
     return result.stdout.lower()
 
-
-if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser(description="Check SyGuS solution using cvc5.")
-    parser.add_argument("--p", required=True, help="Input SyGuS problem file")
-    parser.add_argument("--s", required=True, help="Candidate solution as a string")
-    parser.add_argument("--o", "-o", help="Output file name (optional, if not given, use temp file)", default=None)
-
-    args = parser.parse_args()
-
-    output = check_sygus_solution(args.p, args.s, args.o)
-    print(f"Output: {output}")
