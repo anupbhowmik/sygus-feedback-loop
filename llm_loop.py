@@ -17,7 +17,7 @@ if __name__ == "__main__":
     with open(args.p, "r") as f:
         problem_spec = f.read()
 
-    model_name = constants.OLLAMA_CODELLAMA_34B_INSTRUCT_Q4
+    model_name = constants.OLLAMA_CODELLAMA_7B
     model = get_ollama_model(model_name)
     print(f"Using model: {model_name}")
 
