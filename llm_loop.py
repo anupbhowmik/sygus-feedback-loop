@@ -1,7 +1,5 @@
-from checker.utils import check_sygus_solution
-from llm.models import get_model
-from llm import constants
-from llm.tools import generateSyGuSSolution
+from checker import check_sygus_solution
+from llm import get_model, constants, generateSyGuSSolution
 import argparse
 
 if __name__ == "__main__":

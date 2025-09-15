@@ -2,7 +2,7 @@ import subprocess
 import tempfile
 import os
 
-from convert.utils import convert_declare_var_to_fun, constraints_to_assert, replace_synth_fun_with_solution
+from convert import convert_declare_var_to_fun, constraints_to_assert, replace_synth_fun_with_solution
 
 def check_sygus_solution(problem_file: str, solution: str, output_file: str = None) -> str:
     print(f"Reading problem file: {problem_file}")

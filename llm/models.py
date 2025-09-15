@@ -5,7 +5,7 @@ from langchain_huggingface import HuggingFaceEndpoint, ChatHuggingFace
 from langchain_groq import ChatGroq
 load_dotenv()
 import os
-import constants
+from . import constants
 
 
 API_KEY = os.getenv("OPENAI_API_KEY")
@@ -38,13 +38,13 @@ model_groq = ChatGroq(
 )
 
 def get_model(model: str):
-    if model == "openai":
+    if model == constants.OPENAI_GPT_4O:
         return model_openai, model_openai.model_name
-    elif model == "local":
+    elif model == constants.OLLAMA_LLAMA_3_2_3B_INSTRUCT_Q4:
         return model_ollama, model_ollama.model
-    elif model == "huggingface":
+    elif model == constants.HUGGINGFACE_LLAMA_3_2_3B_INSTRUCT:
         return model_hug, model_hug.model_id
-    elif model == "groq":
+    elif model == constants.GROQ_LLAMA_3_3_70B_VERSATILE:
         return model_groq, model_groq.model_name
     else:
         raise ValueError(f"Unknown model: {model}")
