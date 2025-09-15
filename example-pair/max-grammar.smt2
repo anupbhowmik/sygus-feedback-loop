@@ -25,3 +25,4 @@
     )
 ))
 (check-sat)
+(get-model)

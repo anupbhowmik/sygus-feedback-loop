@@ -37,7 +37,7 @@ def replace_synth_fun_with_solution(content: str, solution: str) -> str:
                 skipping = False
             continue
         if "(check-synth)" in line:
-            modified_lines.append(line.replace("(check-synth)", "(check-sat)"))
+            modified_lines.append(line.replace("(check-synth)", "(check-sat)\n(get-model)"))
         else:
             modified_lines.append(line)
     return "".join(modified_lines)

@@ -37,7 +37,7 @@ def check_sygus_solution(problem_spec: str, solution: str, output_file: str = No
 
     try:
         result = subprocess.run(
-            ["cvc5", tmp_name],
+            ["cvc5", tmp_name, "--produce-models"],
             capture_output=True,
             text=True
         )

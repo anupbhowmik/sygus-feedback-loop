@@ -23,3 +23,4 @@
 )
 
 (check-sat)
+(get-model)

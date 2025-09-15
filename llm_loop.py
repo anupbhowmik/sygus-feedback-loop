@@ -23,7 +23,7 @@ if __name__ == "__main__":
 
     init_prompt = f"""You are a helpful assistant that generates SyGuS solutions based on the given problem specification.
     You will be provided with a SyGuS problem specification. Your task is to generate a valid SyGuS solution that adheres to the constraints and requirements outlined in the specification.
-    Ensure that your solution is syntactically correct and logically consistent with the problem statement.\n\n{problem_spec}"""
+    Ensure that your solution is syntactically correct and logically consistent with the problem statement.\n\n{problem_spec}. Give only the solution, nothing else."""
 
     try:
         ai_response = model.invoke(init_prompt)
