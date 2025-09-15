@@ -4,13 +4,10 @@ import os
 
 from convert import convert_declare_var_to_fun, constraints_to_assert, replace_synth_fun_with_solution
 
-def check_sygus_solution(problem_file: str, solution: str, output_file: str = None) -> str:
-    print(f"Reading problem file: {problem_file}")
-    with open(problem_file, "r") as f:
-        content = f.read()
-
+def check_sygus_solution(problem_spec: str, solution: str, output_file: str = None) -> str:
+    
     # Convert (declare-var ...) to (declare-fun ...)
-    content = convert_declare_var_to_fun(content)
+    content = convert_declare_var_to_fun(problem_spec)
 
     # Convert constraints to a single assertion
     content = constraints_to_assert(content)
@@ -32,11 +29,11 @@ def check_sygus_solution(problem_file: str, solution: str, output_file: str = No
         print(f"Temporary file created at: {tmp_name}")
 
     # print the file content for debugging
-    print("\n==============================\n\n")
-    with open(tmp_name, "r") as f:
-        print("Solution file content:")
-        print(f.read())
-    print("\n==============================\n\n")
+    # print("\n==============================\n\n")
+    # with open(tmp_name, "r") as f:
+    #     print("Solution file content:")
+    #     print(f.read())
+    # print("\n==============================\n\n")
 
     try:
         result = subprocess.run(
