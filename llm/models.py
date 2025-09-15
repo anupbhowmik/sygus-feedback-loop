@@ -3,15 +3,14 @@ from langchain_openai import ChatOpenAI
 from langchain_ollama import ChatOllama
 from langchain_huggingface import HuggingFaceEndpoint, ChatHuggingFace
 from langchain_groq import ChatGroq
-load_dotenv()
+load_dotenv() # loads the API keys from .env file
 import os
 
-API_KEY = os.getenv("OPENAI_API_KEY")
-
-def get_openai_model(model_name: str, api_key: str = API_KEY):
+def get_openai_model(model_name: str):
     return ChatOpenAI(
         model=model_name,
-        api_key=api_key,
+        api_key=os.getenv("OPENAI_API_KEY"),
+        temperature=0.0,
     )
 
 def get_ollama_model(model_name: str, temperature: float = 0.0):
