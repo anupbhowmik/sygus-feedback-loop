@@ -4,8 +4,15 @@ import os
 
 from convert import convert_declare_var_to_fun, constraints_to_assert, replace_synth_fun_with_solution
 
-def check_sygus_solution(problem_spec: str, solution: str, output_file: str = None) -> str:
+def check_sygus_solution(problem_spec: str, solution: str, iter: int, output_file: str = None) -> str:
+    '''
+    Check the given SyGuS solution using cvc5.
+    If output_file is provided, write the modified SMT2 content to that file.
     
+    Returns:
+    - cvc5 output as a string
+    - If there's an error running cvc5, returns the error message.
+    '''
     # Convert (declare-var ...) to (declare-fun ...)
     content = convert_declare_var_to_fun(problem_spec)
 
@@ -16,6 +23,14 @@ def check_sygus_solution(problem_spec: str, solution: str, output_file: str = No
     modified = replace_synth_fun_with_solution(content, solution)
 
     tmp_name = None
+
+    if output_file:
+        os.makedirs(os.path.dirname(output_file), exist_ok=True)
+    if output_file and output_file.endswith(".smt2"):
+        output_file = output_file[:-5] + f"_iter{iter}.smt2"
+    elif output_file:
+        output_file = output_file + f"_iter{iter}.smt2"
+    
     if output_file:
         with open(output_file, "w", encoding="utf-8") as out_f:
             out_f.write(modified)
@@ -42,10 +57,7 @@ def check_sygus_solution(problem_spec: str, solution: str, output_file: str = No
             text=True
         )
         print("Subprocess finished.")
-        print("stdout:")
-        print(result.stdout)
-        print("stderr:")
-        print(result.stderr)
+
     except Exception as e:
         print(f"Error running cvc5: {e}")
         return f"Error: {e}"

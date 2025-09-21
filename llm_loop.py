@@ -9,6 +9,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Check SyGuS solution using cvc5.")
     parser.add_argument("-p", required=True, help="Input SyGuS problem file")
     parser.add_argument("-s", required=True, help="Candidate solution as a string")
+    parser.add_argument("-t", "--threshold", type=int, default=5, help="iteration threshold (default: 5)")
     parser.add_argument("-o", "-o", help="Output file name (optional, if not given, use temp file)", default=None)
 
     args = parser.parse_args()
@@ -25,14 +26,20 @@ if __name__ == "__main__":
     # You will be provided with a SyGuS problem specification. Your task is to generate a valid SyGuS solution that adheres to the constraints and requirements outlined in the specification.
     # Ensure that your solution is syntactically correct and logically consistent with the problem statement.\n\n{problem_spec}. Give only the solution, nothing else."""
 
-    # try:
-    #     ai_response = model.invoke(init_prompt)
-    # except Exception as e:
-    #     print(f"Error during model invocation: {e}")
-    #     exit(1)
-    # print(f"Model response: {ai_response.content}")
+    for iteration in range(args.threshold):
+        print(f"--- Iteration {iteration + 1} ---")
+        
+        # try:
+        #     ai_response = model.invoke(init_prompt)
+        # except Exception as e:
+        #     print(f"Error during model invocation: {e}")
+        #     exit(1)
+        # candidate_solution = ai_response.content.strip()
 
-    # output = check_sygus_solution(problem_spec, ai_response.content, args.o)
-    output = check_sygus_solution(problem_spec, args.s, args.o)
+        candidate_solution = args.s
+        print(f"Current candidate solution:\n{candidate_solution}")
 
-    print(f"Output: {output}")
+        # output = check_sygus_solution(problem_spec, ai_response.content, args.o)
+        output = check_sygus_solution(problem_spec, args.s, iteration, args.o)
+
+        print(f"Output: {output}")
