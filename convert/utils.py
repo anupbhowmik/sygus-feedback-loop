@@ -81,7 +81,20 @@ def constraints_to_assert(sygus_content: str) -> str:
         return sygus_content  # No constraints to convert
 
     # Create the combined assertion
-    combined_assertion = "(assert (not\n    (and " + "\n         ".join(constraints) + "\n    )\n))"
+    combined_assertion = "\n(assert (not\n    (and " + "\n         ".join(constraints) + "\n    )\n))\n\n"
+
+    # for each of the constraints, add boolean variables so that we can track which constraint fails
+    bool_vars = [f"b{i+1}" for i in range(len(constraints))]
+    bool_decls = "\n".join([f"(declare-fun {var} () Bool)" for var in bool_vars])
+    bool_asserts = "\n".join([f"(assert (= {var} {constraint}))" for var, constraint in zip(bool_vars, constraints)])
+    combined_assertion += bool_decls + "\n" + bool_asserts + "\n\n"
+
+    combined_assertion += (
+        "(assert (not\n"
+        "    (and " + " ".join(bool_vars) + "\n"
+        "    )\n"
+        "))\n"
+    )
 
     # Insert the combined assertion at the position of the first constraint
     insert_pos = sygus_content.find('(constraint')
@@ -95,3 +108,4 @@ def constraints_to_assert(sygus_content: str) -> str:
         )
 
     return modified_content
+
