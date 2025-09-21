@@ -36,6 +36,8 @@ if __name__ == "__main__":
             if VERBOSE:
                 print(f"Prompt:\n{prompt}\n")
             ai_response = model.invoke(prompt)
+            if VERBOSE:
+                print(f"LLM Response:\n{ai_response.content.strip()}\n")
         except Exception as e:
             print(f"Error during model invocation: {e}")
             exit(1)
