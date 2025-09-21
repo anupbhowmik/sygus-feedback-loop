@@ -42,4 +42,16 @@ if __name__ == "__main__":
         # output = check_sygus_solution(problem_spec, ai_response.content, args.o)
         output = check_sygus_solution(problem_spec, args.s, iteration, args.o)
 
-        print(f"Output: {output}")
+        if "unsat" in output.lower():
+            print("The candidate solution is correct (unsat). Exiting.")
+            # save the correct solution to a file
+            save_file = args.p + "_solution.txt"
+            with open(save_file, "w") as f:
+                f.write(candidate_solution)
+            print(f"Correct solution saved to {save_file}")
+            
+            break
+        elif "sat" in output.lower():
+            print("The candidate solution is incorrect (sat). Generating a new candidate solution.")
+            # generate a new candidate solution using the tools
+            
