@@ -19,3 +19,15 @@ def prepare_context_from_error(output: str, old_solution: str) -> str:
     context += output + "\n\n"
     context += "Based on the above error, please provide a new candidate solution that avoids the issues."
     return context
+
+def extract_solution_from_response(response: str) -> str:
+    """
+    Extracts only the SyGuS solution from the LLM response.
+    Assumes the response contains only the solution.
+    """
+    # a solution must start with (define-fun ... and end with )
+    start_idx = response.find("(define-fun")
+    end_idx = response.rfind(")") + 1
+    if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+        return response[start_idx:end_idx].strip()
+    return response.strip()

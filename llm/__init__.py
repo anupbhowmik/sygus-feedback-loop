@@ -18,4 +18,4 @@ from .tools import (
     generateSyGuSSolution,
 )
 
-from .context import prepare_context_from_failure, prepare_context_from_error
+from .context import prepare_context_from_failure, prepare_context_from_error, extract_solution_from_response
