@@ -20,6 +20,10 @@ if __name__ == "__main__":
     with open(args.p, "r") as f:
         problem_spec = f.read()
 
+    # candidate_solution = args.s
+    # output = check_sygus_solution(problem_spec, candidate_solution, 0, args.o)
+    # print(f"cvc5 output:\n{output}")
+    
     model_name = constants.OLLAMA_CODELLAMA_7B
     model = get_ollama_model(model_name)
     print(f"Using model: {model_name}")
