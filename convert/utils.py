@@ -42,6 +42,38 @@ def replace_synth_fun_with_solution(content: str, solution: str) -> str:
             modified_lines.append(line)
     return "".join(modified_lines)
 
+def get_constraints(sygus_content: str) -> list[str]:
+    """
+    Extracts all SyGuS constraints (even multi-line, nested) from the given content.
+    Returns a list of constraint strings.
+    """
+    constraints = []
+    pattern = r'\(constraint'
+    idx = 0
+    while True:
+        match = re.search(pattern, sygus_content[idx:])
+        if not match:
+            break
+        start = idx + match.start()
+        # Find the matching closing parenthesis for this constraint
+        stack = []
+        i = start
+        while i < len(sygus_content):
+            if sygus_content[i] == '(':
+                stack.append('(')
+            elif sygus_content[i] == ')':
+                stack.pop()
+                if not stack:
+                    break
+            i += 1
+        constraint_block = sygus_content[start:i+1]
+        # Extract the inner part
+        inner = constraint_block[len('(constraint'): -1].strip()
+        constraints.append(inner)
+        idx = i + 1  # Continue searching after this block
+    return constraints
+
+
 def constraints_to_assert(sygus_content: str) -> str:
     """
     Replaces all SyGuS constraint blocks (even multi-line, nested) with a single SMT-LIB assertion
@@ -49,34 +81,14 @@ def constraints_to_assert(sygus_content: str) -> str:
     (assert (not (and ...constraints...)))
     Returns the modified SyGuS content.
     """
-    constraints = []
+    constraints = get_constraints(sygus_content)
     content_wo_constraints = sygus_content
-    pattern = r'\(constraint'
-    idx = 0
-    while True:
-        match = re.search(pattern, content_wo_constraints[idx:])
-        if not match:
-            break
-        start = idx + match.start()
-        # Find the matching closing parenthesis for this constraint
-        stack = []
-        i = start
-        while i < len(content_wo_constraints):
-            if content_wo_constraints[i] == '(':
-                stack.append('(')
-            elif content_wo_constraints[i] == ')':
-                stack.pop()
-                if not stack:
-                    break
-            i += 1
-        constraint_block = content_wo_constraints[start:i+1]
-        # Extract the inner part
-        inner = constraint_block[len('(constraint'): -1].strip()
-        constraints.append(inner)
-        # Remove this constraint from the content
-        content_wo_constraints = content_wo_constraints[:start] + content_wo_constraints[i+1:]
-        idx = start  # Continue searching after the removed block
 
+    for constraint in constraints:
+        # Remove this constraint from the content
+        pattern = r'\(constraint\s+' + re.escape(constraint) + r'\s*\)'
+        content_wo_constraints = re.sub(pattern, '', content_wo_constraints, count=1)
+    
     if not constraints:
         return sygus_content  # No constraints to convert
 

@@ -30,7 +30,7 @@ if __name__ == "__main__":
 
     init_prompt = f"""You are a helpful assistant that generates SyGuS solutions based on the given problem specification.
     You will be provided with a SyGuS problem specification. Your task is to generate a valid SyGuS solution that adheres to the constraints and requirements outlined in the specification.
-    Ensure that your solution is syntactically correct and logically consistent with the problem statement.\n\n{problem_spec}. Give only the solution, nothing else."""
+    Ensure that your solution is syntactically correct and logically consistent with the problem statement.\n\n{problem_spec}. Provide only the solution, nothing else. You don't need to include the reasoning or the problem specification in your response."""
 
     prompt = init_prompt
     for iteration in range(args.threshold):
@@ -64,7 +64,7 @@ if __name__ == "__main__":
         elif "sat" in output.lower():
             print("The candidate solution is incorrect (sat).")
             # generate a new candidate solution
-            prompt = prepare_context_from_failure(output, candidate_solution)
+            prompt = prepare_context_from_failure(problem_spec, output, candidate_solution)
             print("Prompting for a new candidate solution...")
         else:
             print("Error thrown from cvc5.")
