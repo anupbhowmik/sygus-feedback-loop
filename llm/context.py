@@ -13,6 +13,7 @@ def parse_output(problem_spec: str, output: str):
                constraint_status_dict: A dictionary mapping each constraint to True (passes) or False (fails)
                counter_example_dict: A dictionary of variable assignments from the counter example
     """
+    print("\nOutput from cvc5:\n", output)
     constraints = get_constraints(problem_spec)
     
     # Parse variable assignments from the output
@@ -104,12 +105,12 @@ def prepare_context_from_failure(problem_spec: str, output: str, old_solution: s
     
     # Get both constraint status and counter example
     constraint_status, counter_example = parse_output(problem_spec, output)
-    # print(f"Constraint status: {constraint_status}")
+    print(f"Constraint status: {constraint_status}")
     print(f"Counter example: {counter_example}")
     
     # Add counter example information to context
     if counter_example:
-        context += "Counter example (variable assignments that make constraints fail):\n"
+        context += "\nCounter example (variable assignments that make constraints fail):\n"
         for var, value in counter_example.items():
             context += f"  {var} = {value}\n"
         context += "\n"

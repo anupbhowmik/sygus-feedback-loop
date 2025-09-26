@@ -2,7 +2,7 @@ import subprocess
 import tempfile
 import os
 
-from convert import convert_declare_var_to_fun, constraints_to_assert, replace_synth_fun_with_solution
+from convert import convert_declare_var_to_fun, constraints_to_assert, replace_synth_fun_with_solution, add_get_model_statement
 
 def check_sygus_solution(problem_spec: str, solution: str, iter: int, output_file: str = None) -> str:
     '''
@@ -17,10 +17,13 @@ def check_sygus_solution(problem_spec: str, solution: str, iter: int, output_fil
     content = convert_declare_var_to_fun(problem_spec)
 
     # Convert constraints to a single assertion
-    content = constraints_to_assert(content)
+    modified = constraints_to_assert(content)
 
     # Replace (synth-fun ...) with the provided solution and (check-synth) with (check-sat)
-    modified = replace_synth_fun_with_solution(content, solution)
+    modified = replace_synth_fun_with_solution(modified, solution)
+
+    modified = add_get_model_statement(modified)
+
 
     tmp_name = None
 
