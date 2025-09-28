@@ -102,7 +102,6 @@ def constraints_to_assert(content: str, constraints: list[str]) -> str:
     Replaces all SyGuS constraint blocks (even multi-line, nested) with a single SMT-LIB assertion
     of the form:
     (assert (not (and ...constraints...)))
-    And adds (get-value ...) statements for each constraint.
     Returns the modified SyGuS content.
     """
     content_wo_constraints = content
@@ -130,23 +129,13 @@ def convert_sygus_to_smt2(sygus_spec: str, solution: str) -> str:
     """
     Converts the given SyGuS content to SMT-LIB format.
     """
-    # remove (check-synth) statement
     modified = remove_check_synth(sygus_spec)
-
     modified = replace_synth_fun_with_solution(modified, solution)
-    
-    # Convert (declare-var ...) to (declare-fun ...)
     modified = convert_declare_var_to_fun(modified)
-
     constraints = get_constraints(sygus_spec)
-
     modified = constraints_to_assert(modified, constraints)
-
     modified = add_check_sat_statement(modified)
-
     modified = add_get_value_statements(modified, constraints)
-
-
     modified = add_get_model_statement(modified)
     
     return modified
