@@ -3,15 +3,6 @@ from convert import get_constraints
 def parse_output(problem_spec: str, output: str):
     """
     Parses the output from cvc5 and maps each constraint to whether it failed or not.
-    
-    Args:
-        problem_spec: The original problem specification
-        output: The output from cvc5 containing sat/unsat and model
-        
-    Returns:
-        tuple: (constraint_status_dict, counter_example_dict)
-               constraint_status_dict: A dictionary mapping each constraint to True (passes) or False (fails)
-               counter_example_dict: A dictionary of variable assignments from the counter example
     """
     print("\nOutput from cvc5:\n", output)
     constraints = get_constraints(problem_spec)
@@ -28,32 +19,41 @@ def parse_output(problem_spec: str, output: str):
         # Handle error cases
         return {constraint: None for constraint in constraints}, {}
     
-    # Extract variable assignments from the model
-    assignments = {}
-    
-    # Handle the case where the model is wrapped in parentheses
-    model_content = []
-    in_model = False
+    # Parse constraint status from lines that start with (((
+    constraint_status = {}
+    constraint_idx = 0
     
     for line in lines[1:]:
+        line = line.strip()
+        if line.startswith('(((') and line.endswith('))'):
+            # Extract the boolean value (true/false) from the end
+            if line.endswith('true))'):
+                status = True
+            elif line.endswith('false))'):
+                status = False
+            else:
+                status = None
+            
+            # Map to the corresponding constraint
+            if constraint_idx < len(constraints):
+                constraint_status[constraints[constraint_idx]] = status
+                constraint_idx += 1
+    
+    # Extract variable assignments from the model
+    assignments = {}
+    in_model = False
+    
+    for line in lines:
         line = line.strip()
         if line == '(':
             in_model = True
             continue
         elif line == ')':
-            in_model = False
-            break
-        elif in_model or line.startswith('(define-fun'):
-            model_content.append(line)
-    
-    # If no parentheses wrapper, use all lines after 'sat'
-    if not model_content:
-        model_content = [line.strip() for line in lines[1:] if line.strip()]
-    
-    for line in model_content:
-        if line.startswith('(define-fun'):
+            if in_model:
+                break
+        elif in_model and line.startswith('(define-fun'):
             # Remove the closing parenthesis if it's at the end
-            if line.endswith(')') and line.count('(') == line.count(')'):
+            if line.endswith(')'):
                 line = line[:-1]
             
             # Extract variable name and value
@@ -81,18 +81,8 @@ def parse_output(problem_spec: str, output: str):
                     except ValueError:
                         assignments[var_name] = value_part
     
-    # Evaluate each constraint against the assignments
-    constraint_status = {}
-    
-    for constraint in constraints:
-        try:
-            # For now, mark as failed since we have a counterexample (sat result)
-            # In a more sophisticated implementation, you would evaluate the constraint
-            # expression with the given assignments
-            constraint_status[constraint] = False
-        except Exception:
-            constraint_status[constraint] = None
-    
+    print(f"Parsed constraint status: {constraint_status}")
+    print(f"Parsed assignments: {assignments}")
     return constraint_status, assignments
 
 def prepare_context_from_failure(problem_spec: str, output: str, old_solution: str) -> str:
