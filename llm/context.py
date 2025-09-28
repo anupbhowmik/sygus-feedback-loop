@@ -137,14 +137,107 @@ def prepare_context_from_error(output: str, old_solution: str) -> str:
     "Provide only the solution, nothing else. You don't need to include the reasoning or the problem specification in your response."
     return context
 
-def extract_solution_from_response(response: str) -> str:
+# def extract_solution_from_response(response: str) -> str:
+#     """
+#     Extracts only the SyGuS solution from the LLM response.
+#     Assumes the response contains only the solution.
+#     """
+#     # a solution must start with (define-fun ... and end with )
+#     start_idx = response.find("(define-fun")
+#     end_idx = response.rfind(")") + 1
+#     if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+#         return response[start_idx:end_idx].strip()
+#     return response.strip()
+
+def extract_solution_from_response(response: str) -> list[str]:
     """
-    Extracts only the SyGuS solution from the LLM response.
-    Assumes the response contains only the solution.
+    Extracts SyGuS solutions from the LLM response.
+    If multiple solutions are present, extracts all of them.
+    Returns a single string containing all solutions.
     """
-    # a solution must start with (define-fun ... and end with )
-    start_idx = response.find("(define-fun")
-    end_idx = response.rfind(")") + 1
-    if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
-        return response[start_idx:end_idx].strip()
-    return response.strip()
+    solutions = []
+    start_pos = 0
+    
+    while True:
+        # Find the next occurrence of (define-fun
+        start_idx = response.find("(define-fun", start_pos)
+        if start_idx == -1:
+            break
+        
+        # Find the matching closing parenthesis
+        paren_count = 0
+        end_idx = start_idx
+        
+        for i in range(start_idx, len(response)):
+            if response[i] == '(':
+                paren_count += 1
+            elif response[i] == ')':
+                paren_count -= 1
+                if paren_count == 0:
+                    end_idx = i + 1
+                    break
+        
+        if paren_count == 0:  # Found a complete solution
+            solution = response[start_idx:end_idx].strip()
+            solutions.append(solution)
+            start_pos = end_idx
+        else:
+            # Incomplete solution, break
+            break
+    
+    return solutions
+
+def pick_best_solution(solutions: list[str], solution_history: list[str]) -> str:
+    """
+    Picks the best solution from a list of candidate solutions.
+    Currently, it just returns the first solution that is not previously seen.
+    """
+    for solution in solutions:
+        if solution not in solution_history:
+            return solution
+    # If all solutions have been seen, return the first one
+    return solutions[0] if solutions else None
+
+def prepare_context_for_no_solution(problem_spec: str, solution_history: list[str]) -> str:
+    """
+    Prepares a context string when no valid solution could be extracted.
+    This context can be used to prompt the LLM for a new candidate solution.
+    """
+    print("No new solution could be extracted from the LLM response.")
+    context = "The previous attempts to generate a valid candidate solution have failed. The history of attempted solutions is as follows:\n"
+    for idx, sol in enumerate(solution_history):
+        context += f"Attempt {idx + 1}:\n{sol}\n\n"
+    
+    context += "The SyGuS problem specification is as follows:\n"
+    context += problem_spec + "\n\n"
+    context += "Please provide a \"new\" candidate solution that satisfies all the constraints.\n"
+    context += "Provide only the solution, nothing else. You don't need to include the reasoning or the problem specification in your response."
+    return context
+
+def check_for_tricks(solution: str) -> bool:
+    """
+    Checks if the solution is using tricks (i.e., does not start with (define-fun).
+    Returns True if tricks are detected, False otherwise.
+    """
+    return not solution.strip().startswith("(define-fun")
+
+def prepare_context_for_tricks(problem_spec: str, solution: str) -> str:
+    """
+    Prepares a context string when the LLM response indicates it is using tricks.
+    This context can be used to prompt the LLM for a new candidate solution.
+    """
+    context = f"The candidate solution is:\n{solution}\n\n"
+    context += "The solution provided does not adhere to the expected SyGuS format. It appears to be using tricks or is not a valid SyGuS solution.\n"
+    context += "The SyGuS problem specification is as follows:\n"
+    context += problem_spec + "\n\n"
+    context += "Please provide a valid candidate solution that satisfies all the constraints and adheres to the SyGuS format.\n"
+    context += "Provide only the solution, nothing else. You don't need to include the reasoning or the problem specification in your response."
+    
+    return context
+
+def add_failing_solutions_to_context(context: str, failing_solution: str) -> str:
+    """
+    Adds the failing solution to the existing context.
+    """
+    context += f"\nThe previous candidate solution was:\n{failing_solution}\n\n"
+    return context

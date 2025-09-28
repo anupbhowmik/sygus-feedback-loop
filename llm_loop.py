@@ -1,6 +1,6 @@
 from checker import check_sygus_solution
 from convert import convert_sygus_to_smt2
-from llm import get_ollama_model, constants, generateSyGuSSolution, prepare_context_from_failure, prepare_context_from_error, extract_solution_from_response
+from llm import get_ollama_model, constants, generateSyGuSSolution, prepare_context_from_failure, prepare_context_from_error, extract_solution_from_response, pick_best_solution, prepare_context_for_no_solution, prepare_context_for_tricks, check_for_tricks
 import argparse
 
 tools = [generateSyGuSSolution]
@@ -46,11 +46,26 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"Error during model invocation: {e}")
             exit(1)
+        
+        solution_history = []
 
-        candidate_solution = extract_solution_from_response(ai_response.content.strip())
-
+        proposed_solutions = extract_solution_from_response(ai_response.content.strip())
         # candidate_solution = args.s
-        print(f"Current candidate solution:\n{candidate_solution}")
+        candidate_solution = pick_best_solution(proposed_solutions, solution_history)
+        if VERBOSE:
+            print(f"Proposed solutions:\n{proposed_solutions}\n")
+            print(f"Selected candidate solution:\n{candidate_solution}\n")
+
+        if not candidate_solution:
+            prompt = prepare_context_for_no_solution(problem_spec, solution_history)
+            continue
+        if check_for_tricks(candidate_solution):
+            print("Detected trick in the candidate solution. Prompting for a new candidate solution...")
+            prompt = prepare_context_for_tricks(problem_spec, solution_history)
+            continue
+        
+
+        solution_history.append(candidate_solution)
 
         sm2Spec = convert_sygus_to_smt2(problem_spec, candidate_solution)
 
@@ -73,6 +88,7 @@ if __name__ == "__main__":
             print("Error thrown from cvc5.")
             prompt = prepare_context_from_error(output, candidate_solution)
             print("Prompting for a new candidate solution...")
-            
+        
+        prompt += "\n Here are the previously failed solutions:\n{solution_history}\n"
 
             
