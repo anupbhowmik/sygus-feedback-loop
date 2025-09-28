@@ -89,6 +89,6 @@ if __name__ == "__main__":
             prompt = prepare_context_from_error(output, candidate_solution)
             print("Prompting for a new candidate solution...")
         
-        prompt += "\n Here are the previously failed solutions:\n{solution_history}\n"
+        prompt += f"\nHere are the previously failed solutions:\n{solution_history}\n"
 
             
