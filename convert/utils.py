@@ -40,18 +40,24 @@ def replace_synth_fun_with_solution(content: str, solution: str) -> str:
             modified_lines.append(line)
     return "".join(modified_lines)
 
-def replace_check_synth_with_check_sat(content: str) -> str:
+def add_check_sat_statement(content: str) -> str:
     """
-    Replace (check-synth) with (check-sat) in the given content.
+    Adds (check-sat) statement.
     """
-    return content.replace("(check-synth)", "(check-sat)")
+    return content + "\n(check-sat)\n"
 
 def add_get_model_statement(content: str) -> str:
     """
-    Adds (get-model) statement before (check-sat) in the given content.
-    If (check-sat) is not found, appends (get-model) at the end.
+    Adds (get-model) statement.
     """
     return content + "\n(get-model)\n"
+
+def remove_check_synth(content: str) -> str:
+    """
+    Removes (check-synth) statement.
+    """
+    pattern = r'\(check-synth\)'
+    return re.sub(pattern, '', content)
 
 def get_constraints(sygus_content: str) -> list[str]:
     """
@@ -84,53 +90,14 @@ def get_constraints(sygus_content: str) -> list[str]:
         idx = i + 1  # Continue searching after this block
     return constraints
 
+def add_get_value_statements(content: str, constraints: list[str]) -> str:
+    """
+    Adds (get-value ...) statements for each constraint.
+    """
+    get_value_statements = "\n".join([f"(get-value ({constraint}))" for constraint in constraints])
+    return content + "\n" + get_value_statements + "\n"
 
-# def constraints_to_assert(sygus_content: str) -> str:
-#     """
-#     Replaces all SyGuS constraint blocks (even multi-line, nested) with a single SMT-LIB assertion
-#     of the form:
-#     (assert (not (and ...constraints...)))
-#     Returns the modified SyGuS content.
-#     """
-#     constraints = get_constraints(sygus_content)
-#     content_wo_constraints = sygus_content
-
-#     for constraint in constraints:
-#         # Remove this constraint from the content
-#         pattern = r'\(constraint\s+' + re.escape(constraint) + r'\s*\)'
-#         content_wo_constraints = re.sub(pattern, '', content_wo_constraints, count=1)
-    
-#     if not constraints:
-#         return sygus_content  # No constraints to convert
-
-#     # for each of the constraints, add boolean variables so that we can track which constraint fails
-#     bool_vars = [f"b{i+1}" for i in range(len(constraints))]
-#     bool_decls = "\n".join([f"(declare-fun {var} () Bool)" for var in bool_vars])
-    
-#     bool_asserts = "\n".join([f"(assert (= {var} {constraint}))" for var, constraint in zip(bool_vars, constraints)])
-#     combined_assertion = bool_decls + "\n" + bool_asserts + "\n\n"
-
-#     combined_assertion += (
-#         "(assert (not\n"
-#         "    (and " + " ".join(bool_vars) + "\n"
-#         "    )\n"
-#         "))\n"
-#     )
-
-#     # Insert the combined assertion at the position of the first constraint
-#     insert_pos = sygus_content.find('(constraint')
-#     if insert_pos == -1:
-#         modified_content = content_wo_constraints.rstrip() + "\n" + combined_assertion + "\n"
-#     else:
-#         modified_content = (
-#             content_wo_constraints[:insert_pos].rstrip() +
-#             "\n" + combined_assertion + "\n" +
-#             content_wo_constraints[insert_pos:].lstrip()
-#         )
-
-#     return modified_content
-
-def constraints_to_assert(sygus_content: str) -> str:
+def constraints_to_assert(content: str, constraints: list[str]) -> str:
     """
     Replaces all SyGuS constraint blocks (even multi-line, nested) with a single SMT-LIB assertion
     of the form:
@@ -138,8 +105,7 @@ def constraints_to_assert(sygus_content: str) -> str:
     And adds (get-value ...) statements for each constraint.
     Returns the modified SyGuS content.
     """
-    constraints = get_constraints(sygus_content)
-    content_wo_constraints = sygus_content
+    content_wo_constraints = content
 
     for constraint in constraints:
         # Remove this constraint from the content
@@ -147,7 +113,7 @@ def constraints_to_assert(sygus_content: str) -> str:
         content_wo_constraints = re.sub(pattern, '', content_wo_constraints, count=1)
     
     if not constraints:
-        return sygus_content  # No constraints to convert
+        return content  # No constraints to convert
 
     # Create the combined assertion
     combined_assertion = (
@@ -156,24 +122,31 @@ def constraints_to_assert(sygus_content: str) -> str:
         "    )\n"
         "))\n"
     )
-
-    # call replace_check_synth_with_check_sat
-    content_wo_constraints = replace_check_synth_with_check_sat(content_wo_constraints)
-    # TODO: need to drop check-synth and add get-model
-
-    # Add get-value statements for each constraint
-    get_value_statements = "\n".join([f"(get-value ({constraint}))" for constraint in constraints])
-    combined_assertion += "\n" + get_value_statements + "\n"
-
-    # Insert the combined assertion at the position of the first constraint
-    insert_pos = sygus_content.find('(constraint')
-    if insert_pos == -1:
-        modified_content = content_wo_constraints.rstrip() + "\n" + combined_assertion + "\n"
-    else:
-        modified_content = (
-            content_wo_constraints[:insert_pos].rstrip() +
-            "\n" + combined_assertion + "\n" +
-            content_wo_constraints[insert_pos:].lstrip()
-        )
+    modified_content = content_wo_constraints.rstrip() + "\n" + combined_assertion + "\n"
 
     return modified_content
+
+def convert_sygus_to_smt2(sygus_spec: str, solution: str) -> str:
+    """
+    Converts the given SyGuS content to SMT-LIB format.
+    """
+    # remove (check-synth) statement
+    modified = remove_check_synth(sygus_spec)
+
+    modified = replace_synth_fun_with_solution(modified, solution)
+    
+    # Convert (declare-var ...) to (declare-fun ...)
+    modified = convert_declare_var_to_fun(modified)
+
+    constraints = get_constraints(sygus_spec)
+
+    modified = constraints_to_assert(modified, constraints)
+
+    modified = add_check_sat_statement(modified)
+
+    modified = add_get_value_statements(modified, constraints)
+
+
+    modified = add_get_model_statement(modified)
+    
+    return modified

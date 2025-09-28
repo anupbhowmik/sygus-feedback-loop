@@ -2,9 +2,7 @@ import subprocess
 import tempfile
 import os
 
-from convert import convert_declare_var_to_fun, constraints_to_assert, replace_synth_fun_with_solution, add_get_model_statement
-
-def check_sygus_solution(problem_spec: str, solution: str, iter: int, output_file: str = None) -> str:
+def check_sygus_solution(smt2Spec: str, iter: int, output_file: str = None) -> str:
     '''
     Check the given SyGuS solution using cvc5.
     If output_file is provided, write the modified SMT2 content to that file.
@@ -13,18 +11,6 @@ def check_sygus_solution(problem_spec: str, solution: str, iter: int, output_fil
     - cvc5 output as a string
     - If there's an error running cvc5, returns the error message.
     '''
-    # Convert (declare-var ...) to (declare-fun ...)
-    content = convert_declare_var_to_fun(problem_spec)
-
-    # Convert constraints to a single assertion
-    modified = constraints_to_assert(content)
-
-    # Replace (synth-fun ...) with the provided solution and (check-synth) with (check-sat)
-    modified = replace_synth_fun_with_solution(modified, solution)
-
-    modified = add_get_model_statement(modified)
-
-
     tmp_name = None
 
     if output_file:
@@ -36,12 +22,12 @@ def check_sygus_solution(problem_spec: str, solution: str, iter: int, output_fil
     
     if output_file:
         with open(output_file, "w", encoding="utf-8") as out_f:
-            out_f.write(modified)
+            out_f.write(smt2Spec)
         tmp_name = output_file
         print(f"Output written to: {output_file}")
     else:
         with tempfile.NamedTemporaryFile(suffix=".smt2", delete=False, mode="w", encoding="utf-8") as tmp:
-            tmp.write(modified)
+            tmp.write(smt2Spec)
             tmp.flush()
             tmp_name = tmp.name
         print(f"Temporary file created at: {tmp_name}")
