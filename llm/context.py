@@ -1,5 +1,53 @@
 from convert import get_constraints
 
+def example_pair_context():
+    """
+    Returns an example pair of (problem_spec, solution).
+    """
+    problem_spec_diff = """(set-logic LIA)
+
+(synth-fun f ((x Int) (y Int)) Int)
+
+(declare-var x Int)
+(declare-var y Int)
+(constraint (= (f x y) (f y x)))
+(constraint (and (>= x (f x y)) (>= y (f x y))))
+
+(check-synth)
+"""
+    solution_diff = """(
+(define-fun f ((x Int) (y Int)) Int (ite (<= y x) y x))
+)
+"""
+
+    problem_spec_array_search = """
+(set-logic LIA)
+
+(synth-fun findIdx ((y1 Int) (y2 Int) (y3 Int) (k1 Int)) Int)
+
+(declare-var x1 Int)
+(declare-var x2 Int)
+(declare-var x3 Int)
+(declare-var k Int)
+(constraint (=> (and (< x1 x2) (< x2 x3)) (=> (< k x1) (= (findIdx x1 x2 x3 k) 0))))
+(constraint (=> (and (< x1 x2) (< x2 x3)) (=> (> k x3) (= (findIdx x1 x2 x3 k) 3))))
+(constraint (=> (and (< x1 x2) (< x2 x3)) (=> (and (> k x1) (< k x2)) (= (findIdx x1 x2 x3 k) 1))))
+(constraint (=> (and (< x1 x2) (< x2 x3)) (=> (and (> k x2) (< k x3)) (= (findIdx x1 x2 x3 k) 2))))
+
+(check-synth)
+"""
+    solution_array_search = """(
+(define-fun findIdx ((y1 Int) (y2 Int) (y3 Int) (k1 Int)) Int (let ((_let_1 (* (- 1) k1))) (let ((_let_2 (+ y1 _let_1))) (let ((_let_3 (>= _let_2 1))) (let ((_let_4 (not _let_3))) (let ((_let_5 (+ y3 _let_1))) (let ((_let_6 (>= _let_5 1))) (let ((_let_7 (+ y2 _let_1))) (let ((_let_8 (>= _let_7 0))) (let ((_let_9 (or _let_8 (not _let_6)))) (let ((_let_10 (>= _let_5 0))) (let ((_let_11 (>= _let_7 1))) (let ((_let_12 (>= _let_2 0))) (let ((_let_13 (or _let_12 (not _let_11)))) (ite (and (not (>= (+ y1 (* (- 1) y2)) 0)) (not (>= (+ y2 (* (- 1) y3)) 0)) (or _let_3 (not _let_10) (and (not _let_8) _let_6) (and (not _let_12) _let_11))) (ite (and _let_10 _let_9 _let_13) 0 (ite (and _let_10 _let_13 _let_4) 2 (ite (and _let_10 _let_9 _let_4) 1 3))) (- 1))))))))))))))))
+)
+"""
+    example_pair_context = f"Here are some examples of SyGuS problem specifications and their corresponding solutions as context, you don't need to solve them, they are given just as examples.\n\n"
+    example_pair_context += f"Problem Specification 1:\n{problem_spec_diff}\n"
+    example_pair_context += f"Solution 1:\n{solution_diff}\n\n"
+    example_pair_context += f"Problem Specification 2:\n{problem_spec_array_search}\n"
+    example_pair_context += f"Solution 2:\n{solution_array_search}\n\n"
+
+    return example_pair_context
+
 def parse_output(problem_spec: str, output: str):
     """
     Parses the output from cvc5 and maps each constraint to whether it failed or not.
@@ -137,18 +185,6 @@ def prepare_context_from_error(output: str, old_solution: str) -> str:
     "Provide only the solution, nothing else. You don't need to include the reasoning or the problem specification in your response."
     return context
 
-# def extract_solution_from_response(response: str) -> str:
-#     """
-#     Extracts only the SyGuS solution from the LLM response.
-#     Assumes the response contains only the solution.
-#     """
-#     # a solution must start with (define-fun ... and end with )
-#     start_idx = response.find("(define-fun")
-#     end_idx = response.rfind(")") + 1
-#     if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
-#         return response[start_idx:end_idx].strip()
-#     return response.strip()
-
 def extract_solution_from_response(response: str) -> list[str]:
     """
     Extracts SyGuS solutions from the LLM response.
@@ -195,8 +231,8 @@ def pick_best_solution(solutions: list[str], solution_history: list[str]) -> str
     for solution in solutions:
         if solution not in solution_history:
             return solution
-    # If all solutions have been seen, return the first one
-    return solutions[0] if solutions else None
+    # If all solutions have been seen, return None
+    return None
 
 def prepare_context_for_no_solution(problem_spec: str, solution_history: list[str]) -> str:
     """
@@ -210,7 +246,7 @@ def prepare_context_for_no_solution(problem_spec: str, solution_history: list[st
     
     context += "The SyGuS problem specification is as follows:\n"
     context += problem_spec + "\n\n"
-    context += "Please provide a \"new\" candidate solution that satisfies all the constraints.\n"
+    context += "Please provide a \"new\" candidate solution that satisfies all the constraints. Don't produce any one of the previous solutions\n"
     context += "Provide only the solution, nothing else. You don't need to include the reasoning or the problem specification in your response."
     return context
 
