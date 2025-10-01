@@ -2,6 +2,7 @@ from checker import check_sygus_solution
 from convert import convert_sygus_to_smt2
 from llm import get_ollama_model, constants, prepare_context_from_failure, prepare_context_from_error, extract_solution_from_response, pick_best_solution, prepare_context_for_no_solution, prepare_context_for_tricks, check_for_tricks, example_pair_context
 import argparse
+import time
 
 if __name__ == "__main__":
 
