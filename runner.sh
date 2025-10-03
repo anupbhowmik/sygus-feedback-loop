@@ -26,10 +26,12 @@ for file in new-problems/*; do
     echo "Processing: $file"
     
     # Create output directory if it doesn't exist
-    mkdir -p "tmp/$filename_no_ext"
-    
+    timestamp=$(date +"%Y%m%d_%H%M%S")
+    output_dir="logs/${filename_no_ext}_${timestamp}"
+    mkdir -p "$output_dir"
+
     # Run the command
-    python llm_loop.py -p "$file" -v -t 10 > "logs/$filename_no_ext/output.log" 2>&1
+    python llm_loop.py -p "$file" -v -t 10 > "$output_dir/output.log" 2>&1
     
     echo "Completed: $file"
     echo "---"
