@@ -3,6 +3,9 @@ from convert import convert_sygus_to_smt2
 from llm import get_ollama_model, constants, prepare_context_from_failure, prepare_context_from_error, extract_solution_from_response, pick_best_solution, prepare_context_for_no_solution, prepare_context_for_tricks, check_for_tricks, example_pair_context
 import argparse
 import time
+import csv
+import os
+from pathlib import Path
 
 if __name__ == "__main__":
 
@@ -27,7 +30,7 @@ if __name__ == "__main__":
     # output = check_sygus_solution(problem_spec, candidate_solution, 0, args.o)
     # print(f"cvc5 output:\n{output}")
     
-    model_name = constants.OLLAMA_LLAMA_4_17B
+    model_name = constants.OLLAMA_CODELLAMA_7B
     model = get_ollama_model(model_name)
     print(f"Using model: {model_name}")
 
@@ -38,18 +41,22 @@ Your task is to generate a valid SyGuS solution that adheres to the constraints 
 Ensure that your solution is syntactically correct and logically consistent with the problem statement.\n\n{problem_spec}. Provide only the solution, nothing else. \
 You don't need to include the reasoning or the problem specification in your response."
 
-
     prompt = init_prompt
     solution_history = []
     conversation_history = []  # Track full prompt-response history
 
     global_start_time = time.time()
+    success = False
+    final_iteration = 0
+    termination_reason = "max_iterations"
     
     for iteration in range(ITERATION_THRESHOLD):
+        final_iteration = iteration + 1
 
         current_time = time.time()
         if current_time - global_start_time >= CUTOFF_TIME:
             print(f"CUTOFF_TIME of {CUTOFF_TIME} seconds ({CUTOFF_TIME // 60} minutes) reached. Terminating.")
+            termination_reason = "timeout"
             break
 
         print(f"--- Iteration {iteration + 1} ---")
@@ -105,11 +112,13 @@ You don't need to include the reasoning or the problem specification in your res
 
         if "unsat" in output.lower():
             print("The candidate solution is correct (unsat). Exiting.")
+            success = True
+            termination_reason = "solved"
             # save the correct solution to a file
-            save_file = args.p + "_solution.txt"
-            with open(save_file, "w") as f:
-                f.write(candidate_solution)
-            print(f"Correct solution saved to {save_file}")
+            # save_file = args.p + "_solution.txt"
+            # with open(save_file, "w") as f:
+            #     f.write(candidate_solution)
+            # print(f"Correct solution saved to {save_file}")
             break
         elif "sat" in output.lower():
             print("The candidate solution is incorrect (sat).")
@@ -132,4 +141,35 @@ You don't need to include the reasoning or the problem specification in your res
         print(f"Iteration {iteration + 1} completed in {iteration_end_time - iteration_start_time:.3f} seconds.\n")
     
     global_end_time = time.time()
-    print(f"Total time elapsed: {global_end_time - global_start_time:.3f} seconds.")
+    total_time = global_end_time - global_start_time
+    print(f"Total time elapsed: {total_time:.3f} seconds.")
+
+    # Write results to CSV
+    input_filename = Path(args.p).name
+    csv_filename = "logs/summary.csv"
+    
+    csv_data = {
+        'input_file': input_filename,
+        'total_time_seconds': round(total_time, 3),
+        'success': "Success" if success else "Failure",
+        'num_iterations': final_iteration,
+        'model': model_name,
+        'termination_reason': termination_reason,
+        'timestamp': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(global_start_time)),
+        'solution': candidate_solution if success else ""
+    }
+
+    # Check if CSV file exists to determine if we need to write headers
+    csv_exists = os.path.exists(csv_filename)
+    
+    with open(csv_filename, 'a', newline='') as csvfile:
+        fieldnames = ['input_file', 'total_time_seconds', 'success', 'num_iterations', 'model', 'termination_reason', 'timestamp', 'solution']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        
+        # Write header if file is new
+        if not csv_exists:
+            writer.writeheader()
+        
+        writer.writerow(csv_data)
+    
+    print(f"Results appended to {csv_filename}")
