@@ -4,11 +4,18 @@ This repository contains code for a feedback loop system that utilizes Large Lan
 
 ## Run the program
 
-To run the program, use the following command:
+### Flags
+
+- `-p`: Path to the input SyGus problem file (required).
+- `-t` or `--threshold`: Iteration threshold (default: 5).
+- `-c` or `--cutoff`: Cutoff time in minutes (default: 30 minutes).
+- `-o`: Output file name (optional, if not given, uses a temporary file and won't save the `.smt2` file).
+- `-v` or `--verbose`: Enable verbose output for debugging purposes.
+
+### Example
 
 ```bash
-python llm_loop.py -p <path_to_sygus_file> -t <threshold> -o <output_file>
+python llm_loop.py -p <path_to_sygus_file> -o <output_file> -t <threshold> -c <cutoff_time_in_minutes> -v
 ```
 
-Replace `<path_to_sygus_file>` with the path to your SyGus problem file and `<output_file>` with the desired output file name. `-o` is optional; if not provided, the program will generate a temporary file and solve the problem without saving the `.smt2` file. The `-t` flag sets the iteration threshold (default is 5).
-Add the `-v` flag to enable verbose output for debugging purposes.
+The program will run `threshold` iterations or until the `cutoff` time is reached, whichever comes first.

@@ -9,12 +9,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Check SyGuS solution using cvc5.")
     parser.add_argument("-p", required=True, help="Input SyGuS problem file")
     parser.add_argument("-t", "--threshold", type=int, default=5, help="iteration threshold (default: 5)")
+    parser.add_argument("-c", "--cutoff", type=int, default=30, help="Cutoff time in minutes (default: 30 minutes)")
     parser.add_argument("-o", "-o", help="Output file name (optional, if not given, use temp file)", default=None)
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose output")
     # parser.add_argument("-s", required=True, help="Candidate solution as a string")
 
     args = parser.parse_args()
     VERBOSE = args.verbose
+    CUTOFF_TIME = args.cutoff * 60
+    ITERATION_THRESHOLD = args.threshold
 
     print(f"Reading problem file: {args.p}")
     with open(args.p, "r") as f:
@@ -39,9 +42,19 @@ You don't need to include the reasoning or the problem specification in your res
     prompt = init_prompt
     solution_history = []
     conversation_history = []  # Track full prompt-response history
+
+    global_start_time = time.time()
     
-    for iteration in range(args.threshold):
+    for iteration in range(ITERATION_THRESHOLD):
+
+        current_time = time.time()
+        if current_time - global_start_time >= CUTOFF_TIME:
+            print(f"CUTOFF_TIME of {CUTOFF_TIME} seconds ({CUTOFF_TIME // 60} minutes) reached. Terminating.")
+            break
+
         print(f"--- Iteration {iteration + 1} ---")
+
+        iteration_start_time = time.time()
         
         try:
             if VERBOSE:
@@ -114,3 +127,9 @@ You don't need to include the reasoning or the problem specification in your res
         prompt += f"\nPrevious conversation history:\n"
         for conv in conversation_history[-3:]:  # Include last 3 conversations to manage prompt length
             prompt += f"Iteration {conv['iteration']}:\nYour previous response: {conv['response']}\n\n"
+
+        iteration_end_time = time.time()
+        print(f"Iteration {iteration + 1} completed in {iteration_end_time - iteration_start_time:.3f} seconds.\n")
+    
+    global_end_time = time.time()
+    print(f"Total time elapsed: {global_end_time - global_start_time:.3f} seconds.")
