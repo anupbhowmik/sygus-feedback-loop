@@ -31,7 +31,7 @@ for file in new-problems/*; do
     mkdir -p "$output_dir"
 
     # Run the command
-    python llm_loop.py -p "$file" -v -t 2 -c 30 > "$output_dir/output.log" 2>&1
+    python llm_loop.py -p "$file" -v -t 20 -c 30 > "$output_dir/output.log" 2>&1
     
     echo "Completed: $file"
     echo "---"

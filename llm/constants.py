@@ -1,6 +1,7 @@
 OPENAI_GPT_4O = "gpt-4o"
 OLLAMA_LLAMA_3_2_3B_INSTRUCT_Q4 = "llama3.2:3b-instruct-q4_1"
 OLLAMA_CODELLAMA_7B = "codellama:7b"
+OLLAMA_DEEPCODER_14B = "deepcoder:14b"
 OLLAMA_LLAMA_4_17B = "llama4:16x17b"
 OLLAMA_CODELLAMA_34B_INSTRUCT_Q4 = "codellama:34b-instruct-q4_0"
 HUGGINGFACE_LLAMA_3_2_3B_INSTRUCT = "meta-llama/Llama-3.2-3B-Instruct"
