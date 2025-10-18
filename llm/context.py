@@ -246,7 +246,7 @@ def prepare_context_for_no_solution(problem_spec: str, solution_history: list[st
     
     context += "The SyGuS problem specification is as follows:\n"
     context += problem_spec + "\n\n"
-    context += "Please provide a \"new\" candidate solution that satisfies all the constraints. Don't produce any one of the previous solutions\n"
+    context += "Please provide a new candidate solution that satisfies all the constraints. Don't produce any one of the previous solutions\n"
     context += "Provide only the solution, nothing else. You don't need to include the reasoning or the problem specification in your response."
     return context
 
@@ -266,7 +266,7 @@ def prepare_context_for_tricks(problem_spec: str, solution: str) -> str:
     context += "The solution provided does not adhere to the expected SyGuS format. It appears to be using tricks or is not a valid SyGuS solution.\n"
     context += "The SyGuS problem specification is as follows:\n"
     context += problem_spec + "\n\n"
-    context += "Please provide a valid candidate solution that satisfies all the constraints and adheres to the SyGuS format.\n"
+    context += "Please provide a new candidate solution that satisfies all the constraints and adheres to the SyGuS format.\n"
     context += "Provide only the solution, nothing else. You don't need to include the reasoning or the problem specification in your response."
     
     return context
