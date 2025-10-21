@@ -1,5 +1,5 @@
 from checker import check_sygus_solution
-from convert import convert_sygus_to_smt2
+from convert import convert_sygus_to_smt2_per_constraint
 from llm import get_ollama_model, constants, prepare_context_from_failure, prepare_context_from_error, extract_solution_from_response, pick_best_solution, prepare_context_for_no_solution, prepare_context_for_tricks, check_for_tricks, example_pair_context
 import argparse
 import time
@@ -106,9 +106,11 @@ You don't need to include the reasoning or the problem specification in your res
 
         solution_history.append(candidate_solution)
 
-        sm2Spec = convert_sygus_to_smt2(problem_spec, candidate_solution)
+        sm2SpecList = convert_sygus_to_smt2_per_constraint(problem_spec, candidate_solution)
 
-        output = check_sygus_solution(sm2Spec, iteration, args.o)
+        
+
+        # output = check_sygus_solution(sm2Spec, iteration, args.o)
 
         if "unsat" in output.lower():
             print("The candidate solution is correct (unsat). Exiting.")

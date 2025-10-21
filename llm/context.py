@@ -48,9 +48,10 @@ def example_pair_context():
 
     return example_pair_context
 
-def parse_output(problem_spec: str, output: str):
+def parse_output_all_constraints(problem_spec: str, output: str):
     """
     Parses the output from cvc5 and maps each constraint to whether it failed or not.
+    Assumes that the output contains lines indicating the status of each constraint.
     """
     print("\nOutput from cvc5:\n", output)
     constraints = get_constraints(problem_spec)
@@ -133,6 +134,44 @@ def parse_output(problem_spec: str, output: str):
     print(f"Parsed assignments: {assignments}")
     return constraint_status, assignments
 
+def parse_output_single_constraint(output: str, index: int):
+    """
+    Parses the output from cvc5 for a single constraint and returns whether it passed or failed.
+    Assumes that the output contains lines indicating the status of the constraint.
+    """
+    print("\nOutput from cvc5:\n", output)
+    lines = output.strip().split('\n')
+    
+    # Check if the result is satisfiable
+    if lines[0].strip() == 'unsat':
+        return True  # Constraint passed
+    
+    if lines[0].strip() != 'sat':
+        return None  # Error case
+    
+    # Parse constraint status from lines that start with (((
+    constraint_idx = 0
+    
+    for line in lines[1:]:
+        line = line.strip()
+        if line.startswith('(((') and line.endswith('))'):
+            # Extract the boolean value (true/false) from the end
+            # TODO: check if this is present in the output format, otherwise make sure to add this in output
+            if line.endswith('true))'):
+                status = True
+            elif line.endswith('false))'):
+                status = False
+            else:
+                status = None
+            
+            # Map to the corresponding constraint
+            if constraint_idx == index:
+                return status
+            constraint_idx += 1
+    
+    return None  # If index not found
+
+
 def prepare_context_from_failure(problem_spec: str, output: str, old_solution: str) -> str:
     """
     Prepares a context string from the failure output of cvc5 and the old solution.
@@ -142,7 +181,7 @@ def prepare_context_from_failure(problem_spec: str, output: str, old_solution: s
     context += "The verification output includes a counter example (an example where the constraints fail). It also contains the exact constraints that fail on the counter example."
     
     # Get both constraint status and counter example
-    constraint_status, counter_example = parse_output(problem_spec, output)
+    constraint_status, counter_example = parse_output_all_constraints(problem_spec, output)
     print(f"Constraint status: {constraint_status}")
     print(f"Counter example: {counter_example}")
     

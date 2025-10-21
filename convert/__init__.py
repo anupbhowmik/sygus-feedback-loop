@@ -1,1 +1,1 @@
-from .utils import convert_sygus_to_smt2, get_constraints
+from .utils import convert_sygus_to_smt2_per_constraint, get_constraints

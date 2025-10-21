@@ -125,17 +125,52 @@ def constraints_to_assert(content: str, constraints: list[str]) -> str:
 
     return modified_content
 
-def convert_sygus_to_smt2(sygus_spec: str, solution: str) -> str:
-    """
-    Converts the given SyGuS content to SMT-LIB format.
-    """
-    modified = remove_check_synth(sygus_spec)
-    modified = replace_synth_fun_with_solution(modified, solution)
-    modified = convert_declare_var_to_fun(modified)
-    constraints = get_constraints(sygus_spec)
-    modified = constraints_to_assert(modified, constraints)
-    modified = add_check_sat_statement(modified)
-    modified = add_get_value_statements(modified, constraints)
-    modified = add_get_model_statement(modified)
+# def convert_sygus_to_smt2(sygus_spec: str, solution: str) -> str:
+#     """
+#     Converts the given SyGuS content to SMT-LIB format.
+#     """
+#     modified = remove_check_synth(sygus_spec)
+#     modified = replace_synth_fun_with_solution(modified, solution)
+#     modified = convert_declare_var_to_fun(modified)
+#     constraints = get_constraints(sygus_spec)
+#     modified = constraints_to_assert(modified, constraints)
+#     modified = add_check_sat_statement(modified)
+#     modified = add_get_value_statements(modified, constraints)
+#     modified = add_get_model_statement(modified)
     
-    return modified
+#     return modified
+
+def remove_constraints(content: str, constraints: list[str]) -> str:
+    """
+    Removes all (constraint ...) blocks corresponding to the provided constraint inners.
+    """
+    content_wo_constraints = content
+    for constraint in constraints:
+        pattern = r'\(constraint\s+' + re.escape(constraint) + r'\s*\)'
+        content_wo_constraints = re.sub(pattern, '', content_wo_constraints, count=1)
+    return content_wo_constraints
+
+def convert_sygus_to_smt2_per_constraint(sygus_spec: str, solution: str) -> list[str]:
+    """
+    For each SyGuS constraint, produce a separate SMT2 content that asserts only that single
+    constraint negated, i.e., (assert (not <constraint>)).
+    Returns a list of SMT2 contents, one per constraint. If there are no constraints, returns [].
+    """
+    constraints = get_constraints(sygus_spec)
+    if not constraints:
+        return []
+
+    # Build a base (no constraints, replaced synth-fun, converted declares)
+    base = remove_check_synth(sygus_spec)
+    base = replace_synth_fun_with_solution(base, solution)
+    base = convert_declare_var_to_fun(base)
+    base = remove_constraints(base, constraints).rstrip()
+
+    outputs: list[str] = []
+    for c in constraints:
+        # Single-constraint assertion
+        single = base + "\n" + "(assert (not\n" + f"    {c}\n" + "))\n"
+        single = add_check_sat_statement(single)
+        single = add_get_model_statement(single)
+        outputs.append(single)
+    return outputs
