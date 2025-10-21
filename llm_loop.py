@@ -1,6 +1,6 @@
 from checker import check_sygus_solution
 from convert import convert_sygus_to_smt2_per_constraint
-from llm import get_ollama_model, constants, prepare_context_from_failure, prepare_context_from_error, extract_solution_from_response, pick_best_solution, prepare_context_for_no_solution, prepare_context_for_tricks, check_for_tricks, example_pair_context
+from llm import get_ollama_model, constants, prepare_context_from_failure, prepare_context_from_error, extract_solution_from_response, pick_best_solution, prepare_context_for_no_solution, prepare_context_for_tricks, check_for_tricks, example_pair_context, parse_output_get_counterexample
 import argparse
 import time
 import csv
@@ -106,14 +106,40 @@ You don't need to include the reasoning or the problem specification in your res
 
         solution_history.append(candidate_solution)
 
-        sm2SpecList = convert_sygus_to_smt2_per_constraint(problem_spec, candidate_solution)
+        smt2SpecList = convert_sygus_to_smt2_per_constraint(problem_spec, candidate_solution)
 
+        constraint_status = []
+        counter_examples = []
+        output_list = []
+        all_passed = True
         
+        for idx, smt2_spec in enumerate(smt2SpecList):
+            output = check_sygus_solution(smt2_spec, iteration, args.o)
+            output_list.append(output)
+            
+            if "unsat" in output.lower():
+                constraint_status.append((idx, "passed"))
+                if VERBOSE:
+                    print(f"Constraint {idx} passed (unsat).")
+            elif "sat" in output.lower():
+                constraint_status.append((idx, "failed"))
+                all_passed = False
+                if VERBOSE:
+                    print(f"Constraint {idx} failed (sat).")
+                counter_example = parse_output_get_counterexample(output)
+                counter_examples.append((idx, counter_example))
+            else:
+                constraint_status.append((idx, "error"))
+                all_passed = False
+                if VERBOSE:
+                    print(f"Constraint {idx} returned an error.")
 
-        # output = check_sygus_solution(sm2Spec, iteration, args.o)
+        if VERBOSE:
+            print(f"Constraint status: {constraint_status}")
+            print(f"Counter examples: {counter_examples}")
 
-        if "unsat" in output.lower():
-            print("The candidate solution is correct (unsat). Exiting.")
+        if all_passed:
+            print("The candidate solution is correct (unsat for all constraints). Exiting.")
             success = True
             termination_reason = "solved"
             # save the correct solution to a file
@@ -122,14 +148,15 @@ You don't need to include the reasoning or the problem specification in your res
             #     f.write(candidate_solution)
             # print(f"Correct solution saved to {save_file}")
             break
-        elif "sat" in output.lower():
-            print("The candidate solution is incorrect (sat).")
-            # generate a new candidate solution
-            prompt = prepare_context_from_failure(problem_spec, output, candidate_solution)
+        elif any(status == "error" for idx, status in constraint_status):
+            print("Error thrown from cvc5.")
+
+            prompt = prepare_context_from_error(problem_spec, output_list, constraint_status, candidate_solution)
             print("Prompting for a new candidate solution")
         else:
-            print("Error thrown from cvc5.")
-            prompt = prepare_context_from_error(output, candidate_solution)
+            print("The candidate solution is incorrect (sat for some constraints).")
+            # generate a new candidate solution
+            prompt = prepare_context_from_failure(problem_spec, output_list, constraint_status, counter_examples, candidate_solution)
             print("Prompting for a new candidate solution")
         
         prompt += f"\nHere are the previously failed solutions:\n{solution_history}\n"

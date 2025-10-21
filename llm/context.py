@@ -134,45 +134,65 @@ def parse_output_all_constraints(problem_spec: str, output: str):
     print(f"Parsed assignments: {assignments}")
     return constraint_status, assignments
 
-def parse_output_single_constraint(output: str, index: int):
+def parse_output_get_counterexample(output: str) -> dict:
     """
-    Parses the output from cvc5 for a single constraint and returns whether it passed or failed.
-    Assumes that the output contains lines indicating the status of the constraint.
+    Parses the output from cvc5 to extract the counter example variable assignments.
+    Assumes that the output contains lines indicating the variable assignments.
     """
     print("\nOutput from cvc5:\n", output)
     lines = output.strip().split('\n')
     
     # Check if the result is satisfiable
-    if lines[0].strip() == 'unsat':
-        return True  # Constraint passed
-    
     if lines[0].strip() != 'sat':
-        return None  # Error case
+        # If not sat, no counterexample
+        return {}
     
-    # Parse constraint status from lines that start with (((
-    constraint_idx = 0
+    # Extract variable assignments from the model
+    assignments = {}
+    in_model = False
     
-    for line in lines[1:]:
+    for line in lines:
         line = line.strip()
-        if line.startswith('(((') and line.endswith('))'):
-            # Extract the boolean value (true/false) from the end
-            # TODO: check if this is present in the output format, otherwise make sure to add this in output
-            if line.endswith('true))'):
-                status = True
-            elif line.endswith('false))'):
-                status = False
-            else:
-                status = None
+        if line == '(':
+            in_model = True
+            continue
+        elif line == ')':
+            if in_model:
+                break
+        elif in_model and line.startswith('(define-fun'):
+            # Remove the closing parenthesis if it's at the end
+            if line.endswith(')'):
+                line = line[:-1]
             
-            # Map to the corresponding constraint
-            if constraint_idx == index:
-                return status
-            constraint_idx += 1
+            # Extract variable name and value
+            parts = line.split()
+            if len(parts) >= 5:
+                var_name = parts[1]
+                # Join everything after the type declaration
+                value_part = ' '.join(parts[4:])
+                
+                # Parse the value
+                if value_part == 'true':
+                    assignments[var_name] = True
+                elif value_part == 'false':
+                    assignments[var_name] = False
+                elif value_part.startswith('(-') or value_part.startswith('(- '):
+                    # Negative number like (- 1)
+                    num_str = value_part.replace('(-', '').replace('(- ', '').rstrip(')')
+                    try:
+                        assignments[var_name] = -int(num_str.strip())
+                    except ValueError:
+                        assignments[var_name] = value_part
+                else:
+                    try:
+                        assignments[var_name] = int(value_part)
+                    except ValueError:
+                        assignments[var_name] = value_part
     
-    return None  # If index not found
+    print(f"Parsed assignments (counterexample): {assignments}")
+    return assignments
 
-
-def prepare_context_from_failure(problem_spec: str, output: str, old_solution: str) -> str:
+def prepare_context_from_failure(problem_spec: str, output_list: list[str], constraint_status: list[str], counter_examples: list[str], old_solution: str) -> str:
     """
     Prepares a context string from the failure output of cvc5 and the old solution.
     This context can be used to prompt the LLM for a new candidate solution.
@@ -180,27 +200,23 @@ def prepare_context_from_failure(problem_spec: str, output: str, old_solution: s
     context = f"The previous candidate solution was:\n{old_solution}\n\n"
     context += "The verification output includes a counter example (an example where the constraints fail). It also contains the exact constraints that fail on the counter example."
     
-    # Get both constraint status and counter example
-    constraint_status, counter_example = parse_output_all_constraints(problem_spec, output)
     print(f"Constraint status: {constraint_status}")
-    print(f"Counter example: {counter_example}")
-    
-    # Add counter example information to context
-    if counter_example:
-        context += "\nCounter example (variable assignments that make constraints fail):\n"
-        for var, value in counter_example.items():
-            context += f"  {var} = {value}\n"
-        context += "\n"
+    print(f"Counter examples: {counter_examples}")
     
     # Add failing constraints to context
-    failing_constraints = [c for c, status in constraint_status.items() if status is False]
+    # constraint_status: "passed", "failed", "error"
+    failing_constraints = [c for c, status in constraint_status.items() if status.lower() == "failed"]
     if failing_constraints:
         context += "The following constraints failed:\n"
         for constraint in failing_constraints:
             context += f"  {constraint}\n"
+            # find the corresponding counter example
+            for idx, ce in counter_examples:
+                if constraint == failing_constraints[idx]:
+                    context += f"    Counter example: {ce}\n"
         context += "\n"
     
-    passing_constraints = [c for c, status in constraint_status.items() if status is True]
+    passing_constraints = [c for c, status in constraint_status.items() if status.lower() == "passed"]
     if passing_constraints:
         context += "The following constraints passed:\n"
         for constraint in passing_constraints:
@@ -212,15 +228,22 @@ def prepare_context_from_failure(problem_spec: str, output: str, old_solution: s
     return context
 
 
-def prepare_context_from_error(output: str, old_solution: str) -> str:
+def prepare_context_from_error(problem_spec: str, output_list: list[str], constraint_status: list[str], old_solution: str) -> str:
     """
     Prepares a context string from the error output of cvc5 and the old solution.
     This context can be used to prompt the LLM for a new candidate solution.
     """
     context = f"The previous candidate solution was:\n{old_solution}\n\n"
     context += "The verification output indicates an error occurred during processing. The output is:\n"
-    context += output + "\n\n"
-    context += "Based on the above error, please provide a new candidate solution that avoids the issues.\n"
+
+    # map the error outputs to their constraints
+    constraints = get_constraints(problem_spec)
+    for idx, status in constraint_status:
+        if status == "error":
+            context += f"Constraint that caused error:\n  {constraints[idx]}\n"
+            context += f"Error output:\n{output_list[idx]}\n\n"
+
+    context += "Based on the above error(s), please provide a new candidate solution that avoids the issues.\n"
     "Provide only the solution, nothing else. You don't need to include the reasoning or the problem specification in your response."
     return context
 
