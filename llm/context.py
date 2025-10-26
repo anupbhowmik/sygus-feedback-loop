@@ -194,7 +194,7 @@ def parse_output_get_counterexample(output: str) -> dict:
     print(f"Parsed assignments (counterexample): {assignments}")
     return assignments
 
-def prepare_context_from_failure(problem_spec: str, output_list: list[str], constraint_status: list[str], counter_examples: list[str], old_solution: str) -> str:
+def prepare_context_from_failure(constraint_status, old_solution: str) -> str:
     """
     Prepares a context string from the failure output of cvc5 and the old solution.
     This context can be used to prompt the LLM for a new candidate solution.
@@ -202,23 +202,22 @@ def prepare_context_from_failure(problem_spec: str, output_list: list[str], cons
     context = f"The previous candidate solution was:\n{old_solution}\n\n"
     context += "The verification output includes a counter example (an example where the constraints fail). It also contains the exact constraints that fail on the counter example."
     
-    print(f"Constraint status: {constraint_status}")
-    print(f"Counter examples: {counter_examples}")
-    
-    # Add failing constraints to context
-    # constraint_status: "passed", "failed", "error"
-    failing_constraints = [c for c, status in constraint_status.items() if status.lower() == "failed"]
+    failing_constraints = [c['name'] for c in constraint_status if c['status'].lower() == "failed"]
+
+    # add failing constraints and counterexamples
     if failing_constraints:
         context += "The following constraints failed:\n"
         for constraint in failing_constraints:
             context += f"  {constraint}\n"
             # find the corresponding counter example
-            for idx, ce in counter_examples:
-                if constraint == failing_constraints[idx]:
-                    context += f"    Counter example: {ce}\n"
+            for c in constraint_status:
+                if constraint == c['name']:
+                    counter_example = c.get('counter_example', None)
+                    if counter_example:
+                        context += f"    Counter example: {counter_example}\n"
         context += "\n"
     
-    passing_constraints = [c for c, status in constraint_status.items() if status.lower() == "passed"]
+    passing_constraints = [c['name'] for c in constraint_status if c['status'].lower() == "passed"]
     if passing_constraints:
         context += "The following constraints passed:\n"
         for constraint in passing_constraints:
@@ -230,20 +229,20 @@ def prepare_context_from_failure(problem_spec: str, output_list: list[str], cons
     return context
 
 
-def prepare_context_from_error(problem_spec: str, output_list: list[str], constraint_status: list[str], old_solution: str) -> str:
+def prepare_context_from_error(constraint_status, old_solution: str) -> str:
     """
     Prepares a context string from the error output of cvc5 and the old solution.
     This context can be used to prompt the LLM for a new candidate solution.
     """
-    context = f"The previous candidate solution was:\n{old_solution}\n\n"
+    context = f"The candidate solution was:\n{old_solution}\n\n"
     context += "The verification output indicates an error occurred during processing. The output is:\n"
 
-    # map the error outputs to their constraints
-    constraints = get_constraints(problem_spec)
-    for idx, status in constraint_status:
-        if status == "error":
-            context += f"Constraint that caused error:\n  {constraints[idx]}\n"
-            context += f"Error output:\n{output_list[idx]}\n\n"
+    error_constraints = [c['name'] for c in constraint_status if c['status'].lower() == "error"]
+    if error_constraints:
+        context += "The following constraints caused errors:\n"
+        for constraint in error_constraints:
+            context += f"  {constraint}\n"
+        context += "\n"
 
     context += "Based on the above error(s), please provide a new candidate solution that avoids the issues.\n"
     "Provide only the solution, nothing else. You don't need to include the reasoning or the problem specification in your response."

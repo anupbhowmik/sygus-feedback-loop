@@ -1,5 +1,5 @@
 from checker import check_sygus_solution
-from convert import convert_sygus_to_smt2_per_constraint
+from convert import convert_sygus_to_smt2_per_constraint, get_constraints
 from llm import get_ollama_model, constants, prepare_context_from_failure, prepare_context_from_error, extract_solution_from_response, pick_best_solution, prepare_context_for_no_solution, prepare_context_for_tricks, check_for_tricks, example_pair_context, parse_output_get_counterexample
 import argparse
 import time
@@ -30,6 +30,7 @@ if __name__ == "__main__":
     # output = check_sygus_solution(problem_spec, candidate_solution, 0, args.o)
     # print(f"cvc5 output:\n{output}")
     
+    # ----LLM USAGE----
     model_name = constants.OLLAMA_CODELLAMA_7B
     model = get_ollama_model(model_name)
     print(f"Using model: {model_name}")
@@ -107,36 +108,52 @@ You don't need to include the reasoning or the problem specification in your res
         solution_history.append(candidate_solution)
 
         smt2SpecList = convert_sygus_to_smt2_per_constraint(problem_spec, candidate_solution)
+        constraints = get_constraints(problem_spec)
+
 
         constraint_status = []
-        counter_examples = []
-        output_list = []
         all_passed = True
-        
+
         for idx, smt2_spec in enumerate(smt2SpecList):
             output = check_sygus_solution(smt2_spec, iteration, args.o)
-            output_list.append(output)
-            
+            constraint_name = constraints[idx] if idx < len(constraints) else f"constraint{idx+1}"
+
             if "unsat" in output.lower():
-                constraint_status.append((idx, "passed"))
+                status = {
+                    "name": constraint_name,
+                    "status": "passed",
+                    "counter_example": None,
+                    "output": output
+                }
+                constraint_status.append(status)
                 if VERBOSE:
-                    print(f"Constraint {idx} passed (unsat).")
+                    print(f"{constraint_name} passed (unsat).")
             elif "sat" in output.lower():
-                constraint_status.append((idx, "failed"))
-                all_passed = False
-                if VERBOSE:
-                    print(f"Constraint {idx} failed (sat).")
                 counter_example = parse_output_get_counterexample(output)
-                counter_examples.append((idx, counter_example))
-            else:
-                constraint_status.append((idx, "error"))
+                status = {
+                    "name": constraint_name,
+                    "status": "failed",
+                    "counter_example": counter_example,
+                    "output": output
+                }
+                constraint_status.append(status)
                 all_passed = False
                 if VERBOSE:
-                    print(f"Constraint {idx} returned an error.")
+                    print(f"{constraint_name} failed (sat).")
+            else:
+                status = {
+                    "name": constraint_name,
+                    "status": "error",
+                    "counter_example": None,
+                    "output": output
+                }
+                constraint_status.append(status)
+                all_passed = False
+                if VERBOSE:
+                    print(f"{constraint_name} returned an error.")
 
         if VERBOSE:
             print(f"Constraint status: {constraint_status}")
-            print(f"Counter examples: {counter_examples}")
 
         if all_passed:
             print("The candidate solution is correct (unsat for all constraints). Exiting.")
@@ -148,15 +165,15 @@ You don't need to include the reasoning or the problem specification in your res
             #     f.write(candidate_solution)
             # print(f"Correct solution saved to {save_file}")
             break
-        elif any(status == "error" for idx, status in constraint_status):
+        elif any(status['status'].lower() == "error" for status in constraint_status):
             print("Error thrown from cvc5.")
 
-            prompt = prepare_context_from_error(problem_spec, output_list, constraint_status, candidate_solution)
+            prompt = prepare_context_from_error(constraint_status, candidate_solution)
             print("Prompting for a new candidate solution")
         else:
             print("The candidate solution is incorrect (sat for some constraints).")
             # generate a new candidate solution
-            prompt = prepare_context_from_failure(problem_spec, output_list, constraint_status, counter_examples, candidate_solution)
+            prompt = prepare_context_from_failure(constraint_status, candidate_solution)
             print("Prompting for a new candidate solution")
         
         prompt += f"\nHere are the previously failed solutions:\n{solution_history}\n"
