@@ -1,7 +1,3 @@
-; Generated from SyGuS file: max.sy
-; Conversion tool: CVC5 SyGuS to SMT2 Converter
-; Original file: C:\Users\Anup\Desktop\Essentials\dev-drive\sygus-feedback-loop\example-pair\max.sy
-
 (set-logic LIA)
 
 ; Variable declarations
