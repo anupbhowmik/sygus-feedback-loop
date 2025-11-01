@@ -90,12 +90,17 @@ You don't need to include the reasoning or the problem specification in your res
         # candidate_solution = args.s
 
         # track unique/repeated solutions
-        candidate_solution = pick_best_solution(proposed_solutions, solution_history)
-        if candidate_solution:
-            if candidate_solution in unique_solutions_set:
-                repeated_solution_count += 1
-            else:
-                unique_solutions_set.add(candidate_solution)
+        # candidate_solution = pick_best_solution(proposed_solutions, solution_history)
+        candidate_solution = None
+        for solution in solution_history:
+            if solution not in solution_history:
+                candidate_solution = solution
+                break
+
+        if not candidate_solution:
+            repeated_solution_count += 1
+        else:
+            unique_solutions_set.add(candidate_solution)
 
         if VERBOSE:
             print(f"Proposed solutions:\n{proposed_solutions}\n")
