@@ -51,8 +51,13 @@ You don't need to include the reasoning or the problem specification in your res
     final_iteration = 0
     termination_reason = "max_iterations"
     
+    # new trackers
+    solution_constraint_passes = []  # List of dicts: {solution, passed_constraints: [names], valid: bool}
+    unique_solutions_set = set()
+    repeated_solution_count = 0
+    valid_solution_count = 0
+    
     for iteration in range(ITERATION_THRESHOLD):
-        final_iteration = iteration + 1
 
         current_time = time.time()
         if current_time - global_start_time >= CUTOFF_TIME:
@@ -83,7 +88,15 @@ You don't need to include the reasoning or the problem specification in your res
 
         proposed_solutions = extract_solution_from_response(ai_response.content.strip())
         # candidate_solution = args.s
+
+        # track unique/repeated solutions
         candidate_solution = pick_best_solution(proposed_solutions, solution_history)
+        if candidate_solution:
+            if candidate_solution in unique_solutions_set:
+                repeated_solution_count += 1
+            else:
+                unique_solutions_set.add(candidate_solution)
+
         if VERBOSE:
             print(f"Proposed solutions:\n{proposed_solutions}\n")
             print(f"Selected candidate solution:\n{candidate_solution}\n")
@@ -152,6 +165,17 @@ You don't need to include the reasoning or the problem specification in your res
                 if VERBOSE:
                     print(f"{constraint_name} returned an error.")
 
+        # Track constraint passes for this solution
+        passed_constraints = [status['name'] for status in constraint_status if status['status'] == 'passed']
+        valid = not any(status['status'] == "error" for status in constraint_status)
+        if valid:
+            valid_solution_count += 1
+        solution_constraint_passes.append({
+            "solution": candidate_solution,
+            "passed_constraints": passed_constraints,
+            "valid": valid
+        })            
+
         if VERBOSE:
             print(f"Constraint status: {constraint_status}")
 
@@ -190,6 +214,28 @@ You don't need to include the reasoning or the problem specification in your res
     total_time = global_end_time - global_start_time
     print(f"Total time elapsed: {total_time:.3f} seconds.")
 
+    # Solution that satisfies the most constraints, if there are multiple, pick the first one
+    max_passed = None
+    if solution_constraint_passes:
+        max_passed = max(solution_constraint_passes, key=lambda x: len(x["passed_constraints"]), default=None)
+    # max_passed = max(solution_constraint_passes, key=lambda x: len(x["passed_constraints"]), default=None)
+    most_constraints_satisfied = len(max_passed["passed_constraints"]) if max_passed else 0
+
+    # Number of constraints satisfied by at least one solution
+    all_passed_constraints = set()
+    for entry in solution_constraint_passes:
+        all_passed_constraints.update(entry["passed_constraints"])
+    num_constraints_satisfied_by_any = len(all_passed_constraints)
+
+    # Number of unique solutions
+    num_unique_solutions = len(unique_solutions_set)
+
+    # Number of times same solution produced
+    num_repeated_solutions = repeated_solution_count
+
+    # total num of constraints
+    total_num_constraints = len(get_constraints(problem_spec))
+
     # Write results to CSV
     input_filename = Path(args.p).name
     csv_filename = "logs/summary.csv"
@@ -198,10 +244,17 @@ You don't need to include the reasoning or the problem specification in your res
         'input_file': input_filename,
         'total_time_seconds': round(total_time, 3),
         'success': "Success" if success else "Failure",
-        'num_iterations': final_iteration,
+        'num_iterations': iteration + 1,
         'model': model_name,
         'termination_reason': termination_reason,
         'timestamp': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(global_start_time)),
+        'total_num_constraints': total_num_constraints,
+        'most_constraints_satisfied': most_constraints_satisfied, # max number of constraints satisfied by one single solution
+        'most_constraints_solution': max_passed['solution'] if max_passed else "", # solution that satisfied most constraints
+        'num_constraints_satisfied_by_any': num_constraints_satisfied_by_any, # number of constraints satisfied by at least one solution
+        'num_unique_solutions': num_unique_solutions,
+        'num_repeated_solutions': num_repeated_solutions,
+        'num_valid_solutions': valid_solution_count,
         'solution': candidate_solution if success else ""
     }
 
@@ -209,7 +262,21 @@ You don't need to include the reasoning or the problem specification in your res
     csv_exists = os.path.exists(csv_filename)
     
     with open(csv_filename, 'a', newline='') as csvfile:
-        fieldnames = ['input_file', 'total_time_seconds', 'success', 'num_iterations', 'model', 'termination_reason', 'timestamp', 'solution']
+        fieldnames = ['input_file', 
+                      'total_time_seconds', 
+                      'success', 
+                      'num_iterations', 
+                      'model', 
+                      'termination_reason', 
+                      'timestamp',
+                      'total_num_constraints',
+                      'most_constraints_satisfied', 
+                      'most_constraints_solution', 
+                      'num_constraints_satisfied_by_any', 
+                      'num_unique_solutions', 
+                      'num_repeated_solutions', 
+                      'num_valid_solutions',
+                      'solution']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         
         # Write header if file is new

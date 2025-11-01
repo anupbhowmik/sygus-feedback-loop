@@ -1,6 +1,6 @@
 (set-logic LIA)
 
-(define-fun f ((x Int) (y Int)) Int (ite (<= x y) (- y x) (+ x y)))
+(define-fun f ((x Int) (y Int)) Int (ite (<= x y) (- y x) (- x y)))
 
 (declare-fun x () Int)
 (declare-fun y () Int)
