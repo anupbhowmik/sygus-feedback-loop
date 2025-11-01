@@ -35,7 +35,7 @@ if __name__ == "__main__":
     model = get_ollama_model(model_name)
     print(f"Using model: {model_name}")
 
-    init_prompt = f"""You are a helpful assistant that generates SyGuS solutions based on the given problem specification."""
+    init_prompt = f"""You are a helpful assistant that generates SyGuS solutions based on the given problem specification. """
     init_prompt += example_pair_context()
     init_prompt += f"You will be provided with a SyGuS problem specification. \
 Your task is to generate a valid SyGuS solution that adheres to the constraints and requirements outlined in the specification.\
@@ -86,9 +86,9 @@ You don't need to include the reasoning or the problem specification in your res
             "response": ai_response.content.strip()
         })
 
-        extracted_solutions = extract_solution_from_response(ai_response.content.strip())
+        extracted_solutions = extract_solution_from_response(ai_response.content.strip(), VERBOSE)
         proposed_solutions = fix_synth_func_names(problem_spec, extracted_solutions)
-        
+
         # candidate_solution = args.s
 
         # track unique/repeated solutions
