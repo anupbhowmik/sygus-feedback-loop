@@ -90,9 +90,8 @@ You don't need to include the reasoning or the problem specification in your res
         # candidate_solution = args.s
 
         # track unique/repeated solutions
-        # candidate_solution = pick_best_solution(proposed_solutions, solution_history)
         candidate_solution = None
-        for solution in solution_history:
+        for solution in proposed_solutions:
             if solution not in solution_history:
                 candidate_solution = solution
                 break

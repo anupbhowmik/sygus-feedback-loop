@@ -248,25 +248,25 @@ def prepare_context_from_error(constraint_status, old_solution: str) -> str:
     "Provide only the solution, nothing else. You don't need to include the reasoning or the problem specification in your response."
     return context
 
-def extract_solution_from_response(response: str) -> list[str]:
+def extract_solution_from_response(response: str, VERBOSE: str) -> list[str]:
     """
     Extracts SyGuS solutions from the LLM response.
     If multiple solutions are present, extracts all of them.
-    Returns a single string containing all solutions.
     """
     solutions = []
     start_pos = 0
-    
+
     while True:
         # Find the next occurrence of (define-fun
         start_idx = response.find("(define-fun", start_pos)
         if start_idx == -1:
             break
-        
+
         # Find the matching closing parenthesis
         paren_count = 0
         end_idx = start_idx
-        
+        found_complete = False
+
         for i in range(start_idx, len(response)):
             if response[i] == '(':
                 paren_count += 1
@@ -274,28 +274,40 @@ def extract_solution_from_response(response: str) -> list[str]:
                 paren_count -= 1
                 if paren_count == 0:
                     end_idx = i + 1
+                    found_complete = True
                     break
-        
-        if paren_count == 0:  # Found a complete solution
+
+        if found_complete and paren_count == 0:
             solution = response[start_idx:end_idx].strip()
             solutions.append(solution)
             start_pos = end_idx
         else:
-            # Incomplete solution, break
+            if VERBOSE:
+                print(f"SYNTAX-ERROR: incomplete/missing closing parenthesis.")
+            # Attempt to fix by balancing parentheses
+            partial = response[start_idx:]
+            open_paren = partial.count('(')
+            close_paren = partial.count(')')
+            if open_paren > close_paren:
+                # Add missing closing parens
+                fixed = partial + (')' * (open_paren - close_paren))
+            elif close_paren > open_paren:
+                # Remove excess closing parens
+                excess = close_paren - open_paren
+                fixed = partial
+                for _ in range(excess):
+                    idx = fixed.rfind(')')
+                    if idx != -1:
+                        fixed = fixed[:idx] + fixed[idx+1:]
+            else:
+                fixed = partial
+            solutions.append(fixed.strip())
             break
-    
-    return solutions
 
-def pick_best_solution(solutions: list[str], solution_history: list[str]) -> str:
-    """
-    Picks the best solution from a list of candidate solutions.
-    Currently, it just returns the first solution that is not previously seen.
-    """
-    for solution in solutions:
-        if solution not in solution_history:
-            return solution
-    # If all solutions have been seen, return None
-    return None
+    if not solutions and "(define-fun" not in response and VERBOSE:
+        print("SYNTAX-ERROR: No solution found: '(define-fun' not present in response.")
+
+    return solutions
 
 def prepare_context_for_no_solution(problem_spec: str, solution_history: list[str]) -> str:
     """
