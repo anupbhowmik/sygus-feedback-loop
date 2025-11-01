@@ -18,4 +18,4 @@ from .tools import (
     generateSyGuSSolution,
 )
 
-from .context import prepare_context_from_failure, prepare_context_from_error, extract_solution_from_response, pick_best_solution, prepare_context_for_no_solution, prepare_context_for_tricks, check_for_tricks, example_pair_context, parse_output_get_counterexample
+from .context import prepare_context_from_failure, prepare_context_from_error, extract_solution_from_response, prepare_context_for_no_solution, prepare_context_for_tricks, check_for_tricks, example_pair_context, parse_output_get_counterexample, fix_synth_func_names

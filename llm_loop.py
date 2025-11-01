@@ -1,6 +1,6 @@
 from checker import check_sygus_solution
 from convert import convert_sygus_to_smt2_per_constraint, get_constraints
-from llm import get_ollama_model, constants, prepare_context_from_failure, prepare_context_from_error, extract_solution_from_response, pick_best_solution, prepare_context_for_no_solution, prepare_context_for_tricks, check_for_tricks, example_pair_context, parse_output_get_counterexample
+from llm import get_ollama_model, constants, prepare_context_from_failure, prepare_context_from_error, extract_solution_from_response, prepare_context_for_no_solution, prepare_context_for_tricks, check_for_tricks, example_pair_context, parse_output_get_counterexample, fix_synth_func_names
 import argparse
 import time
 import csv
@@ -86,14 +86,16 @@ You don't need to include the reasoning or the problem specification in your res
             "response": ai_response.content.strip()
         })
 
-        proposed_solutions = extract_solution_from_response(ai_response.content.strip())
+        extracted_solutions = extract_solution_from_response(ai_response.content.strip())
+        proposed_solutions = fix_synth_func_names(problem_spec, extracted_solutions)
+        
         # candidate_solution = args.s
 
         # track unique/repeated solutions
         candidate_solution = None
         for solution in proposed_solutions:
             if solution not in solution_history:
-                candidate_solution = solution
+                candidate_solution = solution # pick the first new solution
                 break
 
         if not candidate_solution:
