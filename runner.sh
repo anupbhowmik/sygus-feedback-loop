@@ -26,8 +26,8 @@ for file in new-problems/*; do
     echo "Processing: $file"
     
     # Create output directory if it doesn't exist
-    timestamp=$(date +"%Y%m%d_%H%M%S")
-    output_dir="logs/${filename_no_ext}_${timestamp}"
+    # timestamp=$(date +"%Y%m%d_%H%M%S")
+    output_dir="logs/${filename_no_ext}"
     mkdir -p "$output_dir"
 
     # Run the command

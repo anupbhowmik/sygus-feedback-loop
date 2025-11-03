@@ -30,7 +30,7 @@ if __name__ == "__main__":
     # output = check_sygus_solution(problem_spec, candidate_solution, 0, args.o)
     # print(f"cvc5 output:\n{output}")
     
-    # ----LLM USAGE----
+    # LLM USAGE
     model_name = constants.OLLAMA_CODELLAMA_7B
     model = get_ollama_model(model_name)
     print(f"Using model: {model_name}")
@@ -290,5 +290,31 @@ You don't need to include the reasoning or the problem specification in your res
             writer.writeheader()
         
         writer.writerow(csv_data)
+
+        # Write constraint summary CSV
+        input_filename = Path(args.p).stem
+
+        constraint_csv_filename = f"logs/{input_filename}/constraint_summary.csv"
+        constraint_names = get_constraints(problem_spec)
+        constraint_fieldnames = ['solution'] + constraint_names
+
+        constraint_rows = []
+        for entry in solution_constraint_passes:
+            row = {'solution': entry['solution']}
+            for cname in constraint_names:
+                row[cname] = "passed" if cname in entry['passed_constraints'] else "failed"
+            constraint_rows.append(row)
+
+        # Check if constraint summary CSV exists
+        constraint_csv_exists = os.path.exists(constraint_csv_filename)
+        with open(constraint_csv_filename, 'w', newline='') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=constraint_fieldnames)
+            if not constraint_csv_exists:
+                writer.writeheader()
+            for row in constraint_rows:
+                writer.writerow(row)
+
+        print(f"Constraint summary appended to {constraint_csv_filename}")
+
     
     print(f"Results appended to {csv_filename}")
