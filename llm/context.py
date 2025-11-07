@@ -226,7 +226,7 @@ def prepare_context_from_failure(constraint_status, old_solution: str) -> str:
         context += "\n"
     
     context += "Based on the above output, please provide a new candidate solution that satisfy all the constraints.\n"
-    context += "Provide only the solution, nothing else. You don't need to include the reasoning or the problem specification in your response."
+    context += "Provide only the solution, nothing else. You don't need to include the reasoning or the problem specification in your response. Make sure to use use smt-lib syntax."
     return context
 
 
@@ -246,7 +246,7 @@ def prepare_context_from_error(constraint_status, old_solution: str) -> str:
         context += "\n"
 
     context += "Based on the above error(s), please provide a new candidate solution that avoids the issues.\n"
-    "Provide only the solution, nothing else. You don't need to include the reasoning or the problem specification in your response."
+    "Provide only the solution, nothing else. You don't need to include the reasoning or the problem specification in your response. Make sure to use use smt-lib syntax."
     return context
 
 def extract_solution_from_response(response: str, VERBOSE: str) -> list[str]:
@@ -357,7 +357,7 @@ def prepare_context_for_no_solution(problem_spec: str, solution_history: list[st
     context += "The SyGuS problem specification is as follows:\n"
     context += problem_spec + "\n\n"
     context += "Please provide a new candidate solution that satisfies all the constraints. Don't produce any one of the previous solutions\n"
-    context += "Provide only the solution, nothing else. You don't need to include the reasoning or the problem specification in your response."
+    context += "Provide only the solution, nothing else. You don't need to include the reasoning or the problem specification in your response. Make sure to use use smt-lib syntax."
     return context
 
 def check_for_tricks(solution: str) -> bool:
@@ -377,7 +377,7 @@ def prepare_context_for_tricks(problem_spec: str, solution: str) -> str:
     context += "The SyGuS problem specification is as follows:\n"
     context += problem_spec + "\n\n"
     context += "Please provide a new candidate solution that satisfies all the constraints and adheres to the SyGuS format.\n"
-    context += "Provide only the solution, nothing else. You don't need to include the reasoning or the problem specification in your response."
+    context += "Provide only the solution, nothing else. You don't need to include the reasoning or the problem specification in your response. Make sure to use use smt-lib syntax."
     
     return context
 

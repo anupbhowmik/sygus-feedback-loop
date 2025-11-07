@@ -39,7 +39,7 @@ if __name__ == "__main__":
     init_prompt += example_pair_context()
     init_prompt += f"You will be provided with a SyGuS problem specification. \
 Your task is to generate a valid SyGuS solution that adheres to the constraints and requirements outlined in the specification.\
-Ensure that your solution is syntactically correct and logically consistent with the problem statement.\n\n{problem_spec}. Provide only the solution, nothing else. \
+Ensure that your solution is syntactically correct and logically consistent with the problem statement.\n\n{problem_spec}. Provide only the solution, nothing else. Make sure to use use smt-lib syntax. \
 You don't need to include the reasoning or the problem specification in your response."
 
     prompt = init_prompt
