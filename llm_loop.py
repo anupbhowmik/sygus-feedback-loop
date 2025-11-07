@@ -240,6 +240,8 @@ You don't need to include the reasoning or the problem specification in your res
     # total num of constraints
     total_num_constraints = len(get_constraints(problem_spec))
 
+    most_constraints_solution = max_passed['solution'] if max_passed and most_constraints_satisfied > 0 else ""
+
     # Write results to CSV
     input_filename = Path(args.p).name
     csv_filename = "logs/summary.csv"
@@ -254,7 +256,7 @@ You don't need to include the reasoning or the problem specification in your res
         'timestamp': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(global_start_time)),
         'total_num_constraints': total_num_constraints,
         'most_constraints_satisfied': most_constraints_satisfied, # max number of constraints satisfied by one single solution
-        'most_constraints_solution': max_passed['solution'] if max_passed else "", # solution that satisfied most constraints
+        'most_constraints_solution': most_constraints_solution, # solution that satisfied most constraints
         'num_constraints_satisfied_by_any': num_constraints_satisfied_by_any, # number of constraints satisfied by at least one solution
         'num_unique_solutions': num_unique_solutions,
         'num_repeated_solutions': num_repeated_solutions,
