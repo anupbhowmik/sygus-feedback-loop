@@ -168,8 +168,6 @@ You don't need to include the reasoning or the problem specification in your res
                 }
                 constraint_status.append(status)
                 all_passed = False
-                if VERBOSE:
-                    print(f"{constraint_name} returned an error.")
 
         # Track constraint passes for this solution
         passed_constraints = [status['name'] for status in constraint_status if status['status'] == 'passed']
@@ -198,7 +196,7 @@ You don't need to include the reasoning or the problem specification in your res
         elif any(status['status'].lower() == "error" for status in constraint_status):
             print("Error thrown from cvc5.")
 
-            prompt = prepare_context_from_error(constraint_status, candidate_solution)
+            prompt = prepare_context_from_error(constraint_status, candidate_solution, status['output'])
             print("Prompting for a new candidate solution")
         else:
             print("The candidate solution is incorrect (sat for some constraints).")

@@ -45,10 +45,10 @@ def check_sygus_solution(smt2Spec: str, iter: int, output_file: str = None) -> s
             capture_output=True,
             text=True
         )
-        print("Subprocess finished.")
+        print("cvc5 execution finished.")
 
     except Exception as e:
-        print(f"Error running cvc5: {e}")
+        # print(f"Error running cvc5: {e}")
         return f"Error: {e}"
     finally:
         if not output_file and tmp_name and os.path.exists(tmp_name):

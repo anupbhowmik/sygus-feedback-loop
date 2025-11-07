@@ -230,20 +230,14 @@ def prepare_context_from_failure(constraint_status, old_solution: str) -> str:
     return context
 
 
-def prepare_context_from_error(constraint_status, old_solution: str) -> str:
+def prepare_context_from_error(constraint_status, old_solution: str, output: str) -> str:
     """
     Prepares a context string from the error output of cvc5 and the old solution.
     This context can be used to prompt the LLM for a new candidate solution.
     """
     context = f"The candidate solution was:\n{old_solution}\n\n"
-    context += "The verification output indicates an error occurred during processing. The output is:\n"
-
-    error_constraints = [c['name'] for c in constraint_status if c['status'].lower() == "error"]
-    if error_constraints:
-        context += "The following constraints caused errors:\n"
-        for constraint in error_constraints:
-            context += f"  {constraint}\n"
-        context += "\n"
+    context += "The verification output indicates an error occurred during processing. The error is:\n"
+    context += f"{output}\n\n"
 
     context += "Based on the above error(s), please provide a new candidate solution that avoids the issues.\n"
     "Provide only the solution, nothing else. You don't need to include the reasoning or the problem specification in your response. Make sure to use use smt-lib syntax."
