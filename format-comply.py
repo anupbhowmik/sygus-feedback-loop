@@ -1,4 +1,5 @@
 from llm import get_ollama_model, constants
+from tqdm import tqdm
 
 model_name = constants.OLLAMA_CODELLAMA_7B
 model = get_ollama_model(model_name)
@@ -23,9 +24,9 @@ def normalize(s):
 success_count = 0
 fail_count = 0
 
-iterations = 200
+iterations = 500
 
-for i in range(3):
+for i in tqdm(range(iterations)):
     response = model.invoke(prompt)
     output = response.content.strip()
     if normalize(output) == normalize(expected):
