@@ -230,7 +230,7 @@ def prepare_context_from_failure(constraint_status, old_solution: str) -> str:
     return context
 
 
-def prepare_context_from_error(constraint_status, old_solution: str, output: str) -> str:
+def prepare_context_from_error(old_solution: str, output: str) -> str:
     """
     Prepares a context string from the error output of cvc5 and the old solution.
     This context can be used to prompt the LLM for a new candidate solution.
@@ -297,6 +297,7 @@ def extract_solution_from_response(response: str, VERBOSE: str) -> list[str]:
             else:
                 fixed = partial
             solutions.append(fixed.strip())
+            print(f"Fixed solution to balance parentheses\n")
             break
 
     if not solutions and "(define-fun" not in response and VERBOSE:
@@ -332,6 +333,7 @@ def fix_synth_func_names(problem_spec: str, solutions: list) -> list:
                     count=1
                 )
                 fixed_solutions.append(fixed_solution)
+                print(f"Fixed function name from '{found_name}' to '{correct_func_name}' in solution.\n")
             else:
                 fixed_solutions.append(solution)
         else:

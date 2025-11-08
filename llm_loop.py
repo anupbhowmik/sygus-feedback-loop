@@ -196,7 +196,7 @@ You don't need to include the reasoning or the problem specification in your res
         elif any(status['status'].lower() == "error" for status in constraint_status):
             print("Error thrown from cvc5.")
 
-            prompt = prepare_context_from_error(constraint_status, candidate_solution, status['output'])
+            prompt = prepare_context_from_error(candidate_solution, status['output'])
             print("Prompting for a new candidate solution")
         else:
             print("The candidate solution is incorrect (sat for some constraints).")
