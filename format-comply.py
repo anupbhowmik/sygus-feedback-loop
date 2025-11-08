@@ -23,6 +23,8 @@ def normalize(s):
 success_count = 0
 fail_count = 0
 
+iterations = 200
+
 for i in range(3):
     response = model.invoke(prompt)
     output = response.content.strip()
@@ -31,5 +33,6 @@ for i in range(3):
     else:
         fail_count += 1
 
-print(f"Success: {success_count}")
-print(f"Fail: {fail_count}")
+print(f"Total runs: {iterations}")
+print(f"Success: {success_count}, Percentage: {(success_count/iterations)*100}%")
+print(f"Fail: {fail_count}, Percentage: {(fail_count/iterations)*100}%")
