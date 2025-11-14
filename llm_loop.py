@@ -1,6 +1,6 @@
 from checker import check_sygus_solution
 from convert import convert_sygus_to_smt2_per_constraint, get_constraints
-from llm import get_ollama_model, constants, prepare_context_from_failure, prepare_context_from_error, extract_solution_from_response, prepare_context_for_no_solution, prepare_context_for_tricks, check_for_tricks, example_pair_context, parse_output_get_counterexample, fix_synth_func_names
+from llm import get_ollama_model, constants, prepare_context_from_failure, prepare_context_from_error, extract_solution_from_response, prepare_context_for_no_solution, prepare_context_for_tricks, check_for_tricks, example_pair_context, parse_output_get_counterexample, fix_synth_func_names, prepare_format_instruction
 import argparse
 import time
 import csv
@@ -35,12 +35,12 @@ if __name__ == "__main__":
     model = get_ollama_model(model_name)
     print(f"Using model: {model_name}")
 
-    init_prompt = f"""You are a helpful assistant that generates SyGuS solutions based on the given problem specification. """
+    init_prompt = f"You are a helpful assistant that generates SyGuS solutions based on the given problem specification. "
+    init_prompt += prepare_format_instruction()
     init_prompt += example_pair_context()
     init_prompt += f"You will be provided with a SyGuS problem specification. \
 Your task is to generate a valid SyGuS solution that adheres to the constraints and requirements outlined in the specification.\
-Ensure that your solution is syntactically correct and logically consistent with the problem statement.\n\n{problem_spec}. Provide only the solution, nothing else. Make sure to use use smt-lib syntax. \
-You don't need to include the reasoning or the problem specification in your response."
+Ensure that your solution is syntactically correct and logically consistent with the problem statement.\n\n{problem_spec}."
 
     prompt = init_prompt
     solution_history = []

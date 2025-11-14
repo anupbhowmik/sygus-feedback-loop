@@ -3,7 +3,7 @@ import re
 
 def example_pair_context():
     """
-    Returns example pair of (problem_spec, solution).
+    Returns example pair of (problem_spec, solution) formatted per prepare_format_instruction.
     """
     problem_spec_max = """(set-logic LIA)
 
@@ -18,15 +18,14 @@ def example_pair_context():
 (constraint (>= (max2 x y) x))
 (constraint (>= (max2 x y) y))
 (constraint (or (= x (max2 x y))
-				(= y (max2 x y))))
+                (= y (max2 x y))))
 
 
 (check-synth)
 """
-    solution_max = """(
+    solution_max = """<<<SOLUTION>>>
 (define-fun max2 ((x Int) (y Int)) Int (ite (>= (+ x (* (- 1) y)) 0) x y))
-)
-"""
+<<<END>>>"""
 
     problem_spec_small = """(set-logic LIA)
 
@@ -39,11 +38,13 @@ def example_pair_context():
 
 (check-synth)
 """
-    solution_small = """(
+    solution_small = """<<<SOLUTION>>>
 (define-fun f ((x Int) (y Int)) Int (ite (<= y x) x y))
-)
-"""
-    example_pair_context = f"Here are some examples of SyGuS problem specifications and their corresponding solutions as context, you don't need to solve them, they are given just as examples.\n\n"
+<<<END>>>"""
+
+    example_pair_context = (
+        "Here are some examples of SyGuS problem specifications and their corresponding solutions as context, you don't need to solve them, they are given just as examples.\n\n"
+    )
     example_pair_context += f"Problem Specification 1:\n{problem_spec_max}\n"
     example_pair_context += f"Solution 1:\n{solution_max}\n\n"
     example_pair_context += f"Problem Specification 2:\n{problem_spec_small}\n"
@@ -201,13 +202,12 @@ def prepare_context_from_failure(constraint_status, old_solution: str) -> str:
     This context can be used to prompt the LLM for a new candidate solution.
     """
     context = f"The previous candidate solution was:\n{old_solution}\n\n"
-    context += "The verification output includes a counter example (an example where the constraints fail). It also contains the exact constraints that fail on the counter example."
     
     failing_constraints = [c['name'] for c in constraint_status if c['status'].lower() == "failed"]
 
     # add failing constraints and counterexamples
     if failing_constraints:
-        context += "The following constraints failed:\n"
+        context += "The following constraints failed Each with their counter examples (a counter example is an assignment of values to the variables that causes the constraint to fail):\n"
         for constraint in failing_constraints:
             context += f"  {constraint}\n"
             # find the corresponding counter example
@@ -226,7 +226,7 @@ def prepare_context_from_failure(constraint_status, old_solution: str) -> str:
         context += "\n"
     
     context += "Based on the above output, please provide a new candidate solution that satisfy all the constraints.\n"
-    context += "Provide only the solution, nothing else. You don't need to include the reasoning or the problem specification in your response. Make sure to use use smt-lib syntax."
+    context += prepare_format_instruction()
     return context
 
 
@@ -240,32 +240,37 @@ def prepare_context_from_error(old_solution: str, output: str) -> str:
     context += f"{output}\n\n"
 
     context += "Based on the above error(s), please provide a new candidate solution that avoids the issues.\n"
-    "Provide only the solution, nothing else. You don't need to include the reasoning or the problem specification in your response. Make sure to use use smt-lib syntax."
+    prepare_format_instruction()
     return context
 
 def extract_solution_from_response(response: str, VERBOSE: str) -> list[str]:
     """
-    Extracts SyGuS solutions from the LLM response.
-    If multiple solutions are present, extracts all of them.
+    Extracts SyGuS solutions from the LLM response using <<<SOLUTION>>> and <<<END>>> markers.
+    If multiple solutions are present, extracts all of them and ensures parentheses are balanced.
     """
+    import re
     solutions = []
-    start_pos = 0
+    # Extract all wrapped solutions
+    pattern = r'<<<SOLUTION>>>\s*(.*?)\s*<<<END>>>'
+    wrapped_solutions = re.findall(pattern, response, re.DOTALL)
 
-    while True:
+    for wrapped in wrapped_solutions:
         # Find the next occurrence of (define-fun
-        start_idx = response.find("(define-fun", start_pos)
+        start_idx = wrapped.find("(define-fun")
         if start_idx == -1:
-            break
+            if VERBOSE:
+                print("SYNTAX-ERROR: '(define-fun' not present in wrapped solution.")
+            continue
 
         # Find the matching closing parenthesis
         paren_count = 0
         end_idx = start_idx
         found_complete = False
 
-        for i in range(start_idx, len(response)):
-            if response[i] == '(':
+        for i in range(start_idx, len(wrapped)):
+            if wrapped[i] == '(':
                 paren_count += 1
-            elif response[i] == ')':
+            elif wrapped[i] == ')':
                 paren_count -= 1
                 if paren_count == 0:
                     end_idx = i + 1
@@ -273,21 +278,18 @@ def extract_solution_from_response(response: str, VERBOSE: str) -> list[str]:
                     break
 
         if found_complete and paren_count == 0:
-            solution = response[start_idx:end_idx].strip()
+            solution = wrapped[start_idx:end_idx].strip()
             solutions.append(solution)
-            start_pos = end_idx
         else:
             if VERBOSE:
-                print(f"SYNTAX-ERROR: incomplete/missing closing parenthesis.")
+                print(f"SYNTAX-ERROR: incomplete/missing closing parenthesis in wrapped solution.")
             # Attempt to fix by balancing parentheses
-            partial = response[start_idx:]
+            partial = wrapped[start_idx:]
             open_paren = partial.count('(')
             close_paren = partial.count(')')
             if open_paren > close_paren:
-                # Add missing closing parens
                 fixed = partial + (')' * (open_paren - close_paren))
             elif close_paren > open_paren:
-                # Remove excess closing parens
                 excess = close_paren - open_paren
                 fixed = partial
                 for _ in range(excess):
@@ -297,11 +299,11 @@ def extract_solution_from_response(response: str, VERBOSE: str) -> list[str]:
             else:
                 fixed = partial
             solutions.append(fixed.strip())
-            print(f"Fixed solution to balance parentheses\n")
-            break
+            if VERBOSE:
+                print(f"Fixed solution to balance parentheses\n")
 
-    if not solutions and "(define-fun" not in response and VERBOSE:
-        print("SYNTAX-ERROR: No solution found: '(define-fun' not present in response.")
+    if not solutions and VERBOSE:
+        print("SYNTAX-ERROR: No solution found between <<<SOLUTION>>> and <<<END>>> markers.")
 
     return solutions
 
@@ -353,7 +355,7 @@ def prepare_context_for_no_solution(problem_spec: str, solution_history: list[st
     context += "The SyGuS problem specification is as follows:\n"
     context += problem_spec + "\n\n"
     context += "Please provide a new candidate solution that satisfies all the constraints. Don't produce any one of the previous solutions\n"
-    context += "Provide only the solution, nothing else. You don't need to include the reasoning or the problem specification in your response. Make sure to use use smt-lib syntax."
+    context += prepare_format_instruction()
     return context
 
 def check_for_tricks(solution: str) -> bool:
@@ -373,7 +375,7 @@ def prepare_context_for_tricks(problem_spec: str, solution: str) -> str:
     context += "The SyGuS problem specification is as follows:\n"
     context += problem_spec + "\n\n"
     context += "Please provide a new candidate solution that satisfies all the constraints and adheres to the SyGuS format.\n"
-    context += "Provide only the solution, nothing else. You don't need to include the reasoning or the problem specification in your response. Make sure to use use smt-lib syntax."
+    context += prepare_format_instruction()
     
     return context
 
@@ -383,3 +385,12 @@ def add_failing_solutions_to_context(context: str, failing_solution: str) -> str
     """
     context += f"\nThe previous candidate solution was:\n{failing_solution}\n\n"
     return context
+
+def prepare_format_instruction() -> str:
+    """
+    Prepares the format instruction for the LLM.
+    """
+    instruction = "Wrap the entire solution single line between the markers <<<SOLUTION>>> and <<<END>>> with no extra text or explanation.\n"
+    instruction += "Provide only the solution, nothing else. Make sure to use use smt-lib syntax. \
+You don't need to include the reasoning or the problem specification in your response.\n\n"
+    return instruction
