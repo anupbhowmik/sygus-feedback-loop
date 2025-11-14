@@ -1,6 +1,6 @@
 from checker import check_sygus_solution
 from convert import convert_sygus_to_smt2_per_constraint, get_constraints
-from llm import get_ollama_model, constants, prepare_context_from_failure, prepare_context_from_error, extract_solution_from_response, prepare_context_for_no_solution, prepare_context_for_tricks, check_for_tricks, example_pair_context, parse_output_get_counterexample, fix_synth_func_names, prepare_format_instruction
+from llm import get_ollama_model, constants, prepare_context_from_failure, prepare_context_from_error, extract_solution_from_response, prepare_context_for_no_solution, prepare_context_for_tricks, check_for_tricks, example_pair_context, parse_output_get_counterexample, fix_synth_func_names, prepare_format_instruction, get_func_signature, prepare_context_for_argument_mismatch
 import argparse
 import time
 import csv
@@ -114,6 +114,20 @@ Ensure that your solution is syntactically correct and logically consistent with
             for conv in conversation_history[-3:]:  # Include last 3 conversations to avoid too long prompts
                 prompt += f"Iteration {conv['iteration']} - Response: {conv['response']}\n"
             continue
+
+        # Argument check, if mismatch, prompt accordingly and generate new candidate solution
+        spec_sig = get_func_signature(problem_spec, is_sol=False)
+        cand_sig = get_func_signature(candidate_solution, is_sol=True)
+        if spec_sig[0] and cand_sig[0]:
+            if spec_sig[1] != cand_sig[1]:
+                print("Argument mismatch between specification and candidate solution.")
+                prompt = prepare_context_for_argument_mismatch(spec_sig, cand_sig)
+                # Add conversation history to prompt
+                prompt += f"\n\nPrevious conversation history:\n"
+                for conv in conversation_history[-3:]:
+                    prompt += f"Iteration {conv['iteration']} - Response: {conv['response']}\n"
+                continue
+
         if check_for_tricks(candidate_solution):
             print("Detected trick in the candidate solution. Prompting for a new candidate solution")
             prompt = prepare_context_for_tricks(problem_spec, solution_history)
@@ -161,13 +175,23 @@ Ensure that your solution is syntactically correct and logically consistent with
                     print(f"{constraint_name} failed (sat).")
             else:
                 status = {
-                    "name": constraint_name,
                     "status": "error",
                     "counter_example": None,
                     "output": output
                 }
                 constraint_status.append(status)
                 all_passed = False
+
+                # Save SMT file that caused error
+                input_stem = Path(args.p).stem
+                error_dir = Path(f"logs/{input_stem}")
+                error_dir.mkdir(parents=True, exist_ok=True)
+                error_filename = error_dir / f"{input_stem}_iter{iteration+1}_error.smt2"
+                with open(error_filename, "w") as smt_file:
+                    smt_file.write(smt2_spec)
+                print(f"Saved error SMT file: {error_filename}")
+
+                break  # Stop checking further constraints for this solution
 
         # Track constraint passes for this solution
         passed_constraints = [status['name'] for status in constraint_status if status['status'] == 'passed']

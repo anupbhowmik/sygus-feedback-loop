@@ -303,7 +303,7 @@ def extract_solution_from_response(response: str, VERBOSE: str) -> list[str]:
                 print(f"Fixed solution to balance parentheses\n")
 
     if not solutions and VERBOSE:
-        print("SYNTAX-ERROR: No solution found between <<<SOLUTION>>> and <<<END>>> markers.")
+        print("No solution found between <<<SOLUTION>>> and <<<END>>> markers.")
 
     return solutions
 
@@ -394,3 +394,41 @@ def prepare_format_instruction() -> str:
     instruction += "Provide only the solution, nothing else. Make sure to use use smt-lib syntax. \
 You don't need to include the reasoning or the problem specification in your response.\n\n"
     return instruction
+
+def get_func_signature(text: str, is_sol: bool):
+    """
+    Extracts function name, argument list, and return type from SyGuS spec or solution.
+    If is_sol is True, expects (define-fun ...), else expects (synth-fun ...).
+    Returns (func_name, arg_list, return_type).
+    arg_list is a list of tuples: [(arg_name, arg_type), ...]
+    """
+    import re
+    if is_sol:
+        # (define-fun funcName ((argName argType) ...) returnType ...)
+        pattern = r'\(define-fun\s+([^\s\(\)]+)\s+\((.*?)\)\s+([^\s\(\)]+)'
+    else:
+        # (synth-fun funcName ((argName argType) ...) returnType)
+        pattern = r'\(synth-fun\s+([^\s\(\)]+)\s+\((.*?)\)\s+([^\s\(\)]+)\s*\)'
+    match = re.search(pattern, text, re.DOTALL)
+    if not match:
+        return "", [], ""
+    func_name = match.group(1)
+    args_str = match.group(2)
+    return_type = match.group(3)
+    arg_list = []
+    for arg_match in re.finditer(r'\(([^\s\(\)]+)\s+([^\s\(\)]+)\)', args_str):
+        arg_list.append((arg_match.group(1), arg_match.group(2)))
+    return func_name, arg_list, return_type
+
+def prepare_context_for_argument_mismatch(spec_sig, cand_sig) -> str:
+    """
+    Prepares a context string when there is an argument mismatch between spec and candidate solution.
+    This context can be used to prompt the LLM for a new candidate solution.
+    """
+    context = f"The number of arguments in your previous solution does not match the specification.\n"
+    context += f"Received argument count: {len(cand_sig[1])}\n"
+    context += f"Expected arguments and types: {spec_sig[1]}\n"
+    context += "Please generate a new solution with the correct number of arguments."
+    context += prepare_format_instruction()
+    
+    return context
