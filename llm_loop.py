@@ -1,6 +1,6 @@
 from checker import check_sygus_solution
 from convert import convert_sygus_to_smt2_per_constraint, get_constraints
-from llm import get_ollama_model, constants, prepare_context_from_failure, prepare_context_from_error, extract_solution_from_response, prepare_context_for_no_solution, prepare_context_for_tricks, check_for_tricks, example_pair_context, parse_output_get_counterexample, fix_synth_func_names, prepare_format_instruction, get_func_signature, prepare_context_for_argument_mismatch
+from llm import get_ollama_model, constants, prepare_context_from_failure, prepare_context_from_error, extract_solution_from_response, prepare_context_for_no_solution, prepare_context_for_tricks, check_for_tricks, example_pair_context, parse_output_get_counterexample, fix_synth_func_names, prepare_format_instruction, get_func_signature, prepare_context_for_argument_mismatch, add_return_type_to_solution
 import argparse
 import time
 import csv
@@ -88,8 +88,8 @@ Ensure that your solution is syntactically correct and logically consistent with
 
         extracted_solutions = extract_solution_from_response(ai_response.content.strip(), VERBOSE)
         proposed_solutions = fix_synth_func_names(problem_spec, extracted_solutions)
-
-        # candidate_solution = args.s
+        for sol in proposed_solutions:
+            sol = add_return_type_to_solution(sol, problem_spec)
 
         # track unique/repeated solutions
         candidate_solution = None
