@@ -335,7 +335,7 @@ def fix_synth_func_names(problem_spec: str, solutions: list) -> list:
                     count=1
                 )
                 fixed_solutions.append(fixed_solution)
-                print(f"Fixed function name from '{found_name}' to '{correct_func_name}' in solution.\n")
+                print(f"WARNING: Wrong function name: '{found_name}'. Changed to correct name: '{correct_func_name}' in solution.\n")
             else:
                 fixed_solutions.append(solution)
         else:

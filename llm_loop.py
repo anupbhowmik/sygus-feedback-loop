@@ -87,10 +87,11 @@ Ensure that your solution is syntactically correct and logically consistent with
         })
 
         extracted_solutions = extract_solution_from_response(ai_response.content.strip(), VERBOSE)
-        proposed_solutions = fix_synth_func_names(problem_spec, extracted_solutions)
-        for sol in proposed_solutions:
-            sol = add_return_type_to_solution(sol, problem_spec)
-
+        # proposed_solutions = fix_synth_func_names(problem_spec, extracted_solutions)
+        # for sol in proposed_solutions:
+        #     sol = add_return_type_to_solution(sol, problem_spec)
+        proposed_solutions = [add_return_type_to_solution(sol, problem_spec) for sol in proposed_solutions]
+        
         # track unique/repeated solutions
         candidate_solution = None
         for solution in proposed_solutions:
