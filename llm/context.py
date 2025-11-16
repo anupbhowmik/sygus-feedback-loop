@@ -390,7 +390,7 @@ def prepare_format_instruction() -> str:
     """
     Prepares the format instruction for the LLM.
     """
-    instruction = "Wrap the entire solution single line between the markers <<<SOLUTION>>> and <<<END>>> with no extra text or explanation.\n"
+    instruction = "Wrap the entire solution between the markers <<<SOLUTION>>> and <<<END>>> with no extra text or explanation.\n"
     instruction += "Provide only the solution, nothing else. Make sure to use use smt-lib syntax. \
 You don't need to include the reasoning or the problem specification in your response.\n\n"
     return instruction
