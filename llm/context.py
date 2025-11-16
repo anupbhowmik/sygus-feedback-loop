@@ -300,10 +300,10 @@ def extract_solution_from_response(response: str, VERBOSE: str) -> list[str]:
                 fixed = partial
             solutions.append(fixed.strip())
             if VERBOSE:
-                print(f"Fixed solution to balance parentheses\n")
+                print(f"WARNING: Unbalanced parentheses. Fixed solution to balance parentheses\n")
 
     if not solutions and VERBOSE:
-        print("No solution found between <<<SOLUTION>>> and <<<END>>> markers.")
+        print("WARNING: No solution found between <<<SOLUTION>>> and <<<END>>> markers.")
 
     return solutions
 
