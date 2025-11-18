@@ -1,6 +1,6 @@
 from checker import check_sygus_solution
 from convert import convert_sygus_to_smt2_per_constraint, get_constraints
-from llm import get_ollama_model, constants, prepare_context_from_failure, prepare_context_from_error, extract_solution_from_response, prepare_context_for_no_solution, prepare_context_for_tricks, check_for_tricks, example_pair_context, parse_output_get_counterexample, fix_synth_func_names, prepare_format_instruction, get_func_signature, prepare_context_for_argument_mismatch, add_return_type_to_solution
+from llm import get_ollama_model, constants, generate_init_prompt, prepare_context_from_failure, prepare_context_from_error, extract_solution_from_response, prepare_context_for_no_solution, prepare_context_for_tricks, check_for_tricks, parse_output_get_counterexample, get_func_signature, prepare_context_for_argument_mismatch, add_return_type_to_solution
 import argparse
 import time
 import csv
@@ -35,13 +35,8 @@ if __name__ == "__main__":
     model = get_ollama_model(model_name)
     print(f"Using model: {model_name}")
 
-    init_prompt = f"You are a helpful assistant that generates SyGuS solutions based on the given problem specification. "
-    init_prompt += prepare_format_instruction()
-    init_prompt += example_pair_context()
-    init_prompt += f"You will be provided with a SyGuS problem specification. \
-Your task is to generate a valid SyGuS solution that adheres to the constraints and requirements outlined in the specification.\
-Ensure that your solution is syntactically correct and logically consistent with the problem statement.\n\n{problem_spec}."
-
+    init_prompt = generate_init_prompt(problem_spec)
+    
     prompt = init_prompt
     solution_history = []
     conversation_history = []  # Track full prompt-response history
@@ -58,6 +53,7 @@ Ensure that your solution is syntactically correct and logically consistent with
     valid_solution_count = 0
     
     for iteration in range(ITERATION_THRESHOLD):
+        prompt += generate_init_prompt(problem_spec)
 
         current_time = time.time()
         if current_time - global_start_time >= CUTOFF_TIME:
@@ -91,7 +87,7 @@ Ensure that your solution is syntactically correct and logically consistent with
         # for sol in proposed_solutions:
         #     sol = add_return_type_to_solution(sol, problem_spec)
         proposed_solutions = [add_return_type_to_solution(sol, problem_spec) for sol in proposed_solutions]
-        
+
         # track unique/repeated solutions
         candidate_solution = None
         for solution in proposed_solutions:
@@ -109,7 +105,7 @@ Ensure that your solution is syntactically correct and logically consistent with
             print(f"Selected candidate solution:\n{candidate_solution}\n")
 
         if not candidate_solution:
-            prompt = prepare_context_for_no_solution(problem_spec, solution_history)
+            prompt += prepare_context_for_no_solution(problem_spec, solution_history)
             # Add conversation history to prompt
             prompt += f"\n\nPrevious conversation history:\n"
             for conv in conversation_history[-3:]:  # Include last 3 conversations to avoid too long prompts
@@ -122,7 +118,7 @@ Ensure that your solution is syntactically correct and logically consistent with
         if spec_sig[0] and cand_sig[0]:
             if spec_sig[1] != cand_sig[1]:
                 print("Argument mismatch between specification and candidate solution.")
-                prompt = prepare_context_for_argument_mismatch(spec_sig, cand_sig)
+                prompt += prepare_context_for_argument_mismatch(spec_sig, cand_sig)
                 # Add conversation history to prompt
                 prompt += f"\n\nPrevious conversation history:\n"
                 for conv in conversation_history[-3:]:
@@ -131,7 +127,7 @@ Ensure that your solution is syntactically correct and logically consistent with
 
         if check_for_tricks(candidate_solution):
             print("Detected trick in the candidate solution. Prompting for a new candidate solution")
-            prompt = prepare_context_for_tricks(problem_spec, solution_history)
+            prompt += prepare_context_for_tricks(problem_spec, solution_history)
             # Add conversation history to prompt
             prompt += f"\n\nPrevious conversation history:\n"
             for conv in conversation_history[-3:]:  # Include last 3 conversations
@@ -221,7 +217,7 @@ Ensure that your solution is syntactically correct and logically consistent with
         elif any(status['status'].lower() == "error" for status in constraint_status):
             print("Error thrown from cvc5.")
 
-            prompt = prepare_context_from_error(candidate_solution, status['output'])
+            prompt += prepare_context_from_error(candidate_solution, status['output'])
             print("Prompting for a new candidate solution")
         else:
             print("The candidate solution is incorrect (sat for some constraints).")

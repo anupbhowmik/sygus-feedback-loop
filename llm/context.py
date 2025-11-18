@@ -1,6 +1,18 @@
 from convert import get_constraints
 import re
 
+def generate_init_prompt(problem_spec: str) -> str:
+    """
+    Generates the initial prompt for the LLM given a SyGuS problem specification.
+    """
+    init_prompt = f"You are a helpful assistant that generates SyGuS solutions based on the given problem specification. "
+    init_prompt += prepare_format_instruction()
+    init_prompt += example_pair_context()
+    init_prompt += f"You will be provided with a SyGuS problem specification. \
+Your task is to generate a valid SyGuS solution that adheres to the constraints and requirements outlined in the specification.\
+Ensure that your solution is syntactically correct and logically consistent with the problem statement.\n\n{problem_spec}."
+    return init_prompt
+
 def example_pair_context():
     """
     Returns example pair of (problem_spec, solution) formatted per prepare_format_instruction.
@@ -348,7 +360,9 @@ def prepare_context_for_no_solution(problem_spec: str, solution_history: list[st
     This context can be used to prompt the LLM for a new candidate solution.
     """
     print("No new solution could be extracted from the LLM response.")
-    context = "The previous attempts to generate a valid candidate solution have failed. The history of attempted solutions is as follows:\n"
+    context = "The previous attempts to generate a valid candidate solution have failed.\n"
+    if solution_history:
+        context += "Here are the previous attempted solutions:\n"
     for idx, sol in enumerate(solution_history):
         context += f"Attempt {idx + 1}:\n{sol}\n\n"
     
