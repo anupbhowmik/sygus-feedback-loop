@@ -260,7 +260,6 @@ def extract_solution_from_response(response: str, VERBOSE: str) -> list[str]:
     Extracts SyGuS solutions from the LLM response using <<<SOLUTION>>> and <<<END>>> markers.
     If multiple solutions are present, extracts all of them and ensures parentheses are balanced.
     """
-    import re
     solutions = []
     # Extract all wrapped solutions
     pattern = r'<<<SOLUTION>>>\s*(.*?)\s*<<<END>>>'
@@ -320,7 +319,6 @@ def extract_solution_from_response(response: str, VERBOSE: str) -> list[str]:
     return solutions
 
 def get_synth_func_name(problem_spec: str) -> str:
-    import re
     match = re.search(r'\(synth-fun\s+([^\s\(\)]+)', problem_spec)
     if match:
         return match.group(1)
@@ -416,7 +414,6 @@ def get_func_signature(text: str, is_sol: bool):
     Returns (func_name, arg_list, return_type).
     arg_list is a list of tuples: [(arg_name, arg_type), ...]
     """
-    import re
     if is_sol:
         # (define-fun funcName ((argName argType) ...) returnType ...)
         pattern = r'\(define-fun\s+([^\s\(\)]+)\s+\((.*?)\)\s+([^\s\(\)]+)'
