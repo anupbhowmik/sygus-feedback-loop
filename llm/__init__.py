@@ -18,6 +18,14 @@ from .tools import (
     GenerateSMTLIBSolution,
 )
 
+from .schema import (
+    Solution,
+)
+
+from .schema import (
+    Solution,
+)
+
 from .context import (
     generate_init_prompt, 
     prepare_context_from_failure, 

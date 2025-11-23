@@ -262,18 +262,19 @@ def extract_solution_from_response(response: str, VERBOSE: str) -> list[str]:
     If multiple solutions are present, extracts all of them and ensures parentheses are balanced.
     [won't need if tool calling is used]
     """
+    solutions = []
     # Extract all wrapped solutions
-    # pattern = r'<<<SOLUTION>>>\s*(.*?)\s*<<<END>>>'
-    # wrapped_solutions = re.findall(pattern, response, re.DOTALL)
+    pattern = r'<<<SOLUTION>>>\s*(.*?)\s*<<<END>>>'
+    wrapped_solutions = re.findall(pattern, response, re.DOTALL)
 
-    # if wrapped_solutions:
-    #     if VERBOSE:
-    #         print(f"Found {len(wrapped_solutions)} wrapped solution(s) in LLM response.")
-    #     solutions = refine_solution_from_wrapped(wrapped_solutions, VERBOSE)
-    # else:
-    #     print("No wrapped solution found. Attempting to extract solution directly.")
+    if wrapped_solutions:
+        if VERBOSE:
+            print(f"Found {len(wrapped_solutions)} wrapped solution(s) in LLM response.")
+        solutions = refine_solution_from_wrapped(wrapped_solutions, VERBOSE)
+    else:
+        print("No wrapped solution found. Attempting to extract solution directly.")
 
-    solutions = refine_solution_from_wrapped(response, VERBOSE)
+    # solutions = refine_solution_from_wrapped(response, VERBOSE)
     
     return solutions    
 
