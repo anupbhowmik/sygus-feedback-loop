@@ -32,7 +32,7 @@ if __name__ == "__main__":
     # print(f"cvc5 output:\n{output}")
     
     # LLM USAGE
-    model_name = constants.OLLAMA_CODELLAMA_7B
+    model_name = constants.OLLAMA_GPT_OSS_20B
     model = get_ollama_model(model_name)
     print(f"Using model: {model_name}")
 
