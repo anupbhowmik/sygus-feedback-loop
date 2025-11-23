@@ -1,6 +1,6 @@
 from checker import check_sygus_solution
 from convert import convert_sygus_to_smt2_per_constraint, get_constraints
-from llm import get_ollama_model, constants, generate_init_prompt, prepare_context_from_failure, prepare_context_from_error, extract_solution_from_response, prepare_context_for_no_solution, prepare_context_for_tricks, check_for_tricks, parse_output_get_counterexample, get_func_signature, prepare_context_for_argument_mismatch, add_return_type_to_solution, refine_solution_from_wrapped, GenerateSMTLIBSolution
+from llm import get_ollama_model, constants, generate_init_prompt, prepare_context_from_failure, prepare_context_from_error, extract_solution_from_response, prepare_context_for_no_solution, prepare_context_for_tricks, check_for_tricks, parse_output_get_counterexample, get_func_signature, prepare_context_for_argument_mismatch, add_return_type_to_solution, refine_solution_from_wrapped, GenerateSMTLIBSolution, fix_synth_func_names
 import argparse
 import time
 import csv
@@ -37,12 +37,8 @@ if __name__ == "__main__":
     model = get_ollama_model(model_name)
     print(f"Using model: {model_name}")
 
-    model_with_tools = model.bind_tools(tools)
+    model_with_tools = model.bind_tools(tools, tool_choice = "required")
 
-
-    init_prompt = generate_init_prompt(problem_spec)
-    
-    prompt = init_prompt
     solution_history = []
     conversation_history = []  # Track full prompt-response history
 
@@ -57,6 +53,7 @@ if __name__ == "__main__":
     repeated_solution_count = 0
     valid_solution_count = 0
     
+    prompt = ""
     for iteration in range(ITERATION_THRESHOLD):
         prompt += generate_init_prompt(problem_spec)
 
@@ -76,17 +73,19 @@ if __name__ == "__main__":
                 print(f"\n=================\nPrompt:\n{prompt}\n=================\n")
             ai_response = model_with_tools.invoke(prompt)
 
+            if VERBOSE:
+                print(f"\n=================\nFull LLM Response:\n{ai_response}\n=================\n")
+
             # tool call extract data
-            if (hasattr(ai_response, 'tool_calls') and ai_response.tool_calls and 
-            len(ai_response.tool_calls) > 0 and 
-            ai_response.tool_calls[0].get("name") == "GenerateSMTLIBSolution"):
+            if (hasattr(ai_response, 'tool_calls') and ai_response.tool_calls and len(ai_response.tool_calls) > 0 and ai_response.tool_calls[0].get("name") == "GenerateSMTLIBSolution"):
                 tool_output = ai_response.tool_calls[0].get("args", {})
                 ai_response_content = tool_output.get("solution", "").strip()
                 if VERBOSE:
-                    print(f"\n=================\nTool Output Extracted:\n{ai_response_content}\n=================\n")
+                    print(f"\n=================\nOutput Extracted from Tool Call:\n{ai_response_content}\n=================\n")
+            else:
+                if VERBOSE:
+                    print("No tool call detected in the LLM response. Using full response content.")
 
-            if VERBOSE:
-                print(f"\n=================\nLLM Response:\n{ai_response.content.strip()}\n=================\n")
         except Exception as e:
             print(f"Error during model invocation: {e}")
             exit(1)
@@ -99,7 +98,8 @@ if __name__ == "__main__":
         })
 
         extracted_solutions = extract_solution_from_response(ai_response_content, VERBOSE)
-        # proposed_solutions = fix_synth_func_names(problem_spec, extracted_solutions)
+        proposed_solutions = fix_synth_func_names(problem_spec, extracted_solutions)
+
         # for sol in proposed_solutions:
         #     sol = add_return_type_to_solution(sol, problem_spec)
         proposed_solutions = [add_return_type_to_solution(sol, problem_spec) for sol in proposed_solutions]
