@@ -15,7 +15,7 @@ from .models import (
 )
 
 from .tools import (
-    generateSyGuSSolution,
+    GenerateSMTLIBSolution,
 )
 
-from .context import generate_init_prompt, prepare_context_from_failure, prepare_context_from_error, extract_solution_from_response, prepare_context_for_no_solution, prepare_context_for_tricks, check_for_tricks, parse_output_get_counterexample, fix_synth_func_names, get_func_signature, prepare_context_for_argument_mismatch, add_return_type_to_solution
+from .context import generate_init_prompt, prepare_context_from_failure, prepare_context_from_error, extract_solution_from_response, prepare_context_for_no_solution, prepare_context_for_tricks, check_for_tricks, parse_output_get_counterexample, fix_synth_func_names, get_func_signature, prepare_context_for_argument_mismatch, add_return_type_to_solution, refine_solution_from_wrapped

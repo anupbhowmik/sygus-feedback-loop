@@ -1,11 +1,13 @@
 from checker import check_sygus_solution
 from convert import convert_sygus_to_smt2_per_constraint, get_constraints
-from llm import get_ollama_model, constants, generate_init_prompt, prepare_context_from_failure, prepare_context_from_error, extract_solution_from_response, prepare_context_for_no_solution, prepare_context_for_tricks, check_for_tricks, parse_output_get_counterexample, get_func_signature, prepare_context_for_argument_mismatch, add_return_type_to_solution
+from llm import get_ollama_model, constants, generate_init_prompt, prepare_context_from_failure, prepare_context_from_error, extract_solution_from_response, prepare_context_for_no_solution, prepare_context_for_tricks, check_for_tricks, parse_output_get_counterexample, get_func_signature, prepare_context_for_argument_mismatch, add_return_type_to_solution, refine_solution_from_wrapped, GenerateSMTLIBSolution
 import argparse
 import time
 import csv
 import os
 from pathlib import Path
+
+tools = [GenerateSMTLIBSolution]
 
 if __name__ == "__main__":
 
@@ -31,9 +33,12 @@ if __name__ == "__main__":
     # print(f"cvc5 output:\n{output}")
     
     # LLM USAGE
-    model_name = constants.OLLAMA_CODELLAMA_7B
+    model_name = constants.OLLAMA_GPT_OSS_20B
     model = get_ollama_model(model_name)
     print(f"Using model: {model_name}")
+
+    model_with_tools = model.bind_tools(tools)
+
 
     init_prompt = generate_init_prompt(problem_spec)
     
@@ -64,11 +69,22 @@ if __name__ == "__main__":
         print(f"--- Iteration {iteration + 1} ---")
 
         iteration_start_time = time.time()
+        ai_response_content = ""
         
         try:
             if VERBOSE:
                 print(f"\n=================\nPrompt:\n{prompt}\n=================\n")
-            ai_response = model.invoke(prompt)
+            ai_response = model_with_tools.invoke(prompt)
+
+            # tool call extract data
+            if (hasattr(ai_response, 'tool_calls') and ai_response.tool_calls and 
+            len(ai_response.tool_calls) > 0 and 
+            ai_response.tool_calls[0].get("name") == "GenerateSMTLIBSolution"):
+                tool_output = ai_response.tool_calls[0].get("args", {})
+                ai_response_content = tool_output.get("solution", "").strip()
+                if VERBOSE:
+                    print(f"\n=================\nTool Output Extracted:\n{ai_response_content}\n=================\n")
+
             if VERBOSE:
                 print(f"\n=================\nLLM Response:\n{ai_response.content.strip()}\n=================\n")
         except Exception as e:
@@ -82,7 +98,7 @@ if __name__ == "__main__":
             "response": ai_response.content.strip()
         })
 
-        extracted_solutions = extract_solution_from_response(ai_response.content.strip(), VERBOSE)
+        extracted_solutions = extract_solution_from_response(ai_response_content, VERBOSE)
         # proposed_solutions = fix_synth_func_names(problem_spec, extracted_solutions)
         # for sol in proposed_solutions:
         #     sol = add_return_type_to_solution(sol, problem_spec)

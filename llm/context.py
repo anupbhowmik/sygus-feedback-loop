@@ -35,9 +35,9 @@ def example_pair_context():
 
 (check-synth)
 """
-    solution_max = """<<<SOLUTION>>>
+    solution_max = """
 (define-fun max2 ((x Int) (y Int)) Int (ite (>= (+ x (* (- 1) y)) 0) x y))
-<<<END>>>"""
+"""
 
     problem_spec_small = """(set-logic LIA)
 
@@ -50,9 +50,9 @@ def example_pair_context():
 
 (check-synth)
 """
-    solution_small = """<<<SOLUTION>>>
+    solution_small = """
 (define-fun f ((x Int) (y Int)) Int (ite (<= y x) x y))
-<<<END>>>"""
+"""
 
     example_pair_context = (
         "Here are some examples of SyGuS problem specifications and their corresponding solutions as context, you don't need to solve them, they are given just as examples.\n\n"
@@ -257,15 +257,31 @@ def prepare_context_from_error(old_solution: str, output: str) -> str:
 
 def extract_solution_from_response(response: str, VERBOSE: str) -> list[str]:
     """
-    Extracts SyGuS solutions from the LLM response using <<<SOLUTION>>> and <<<END>>> markers.
+    Extracts SyGuS solutions from the LLM response.
     If multiple solutions are present, extracts all of them and ensures parentheses are balanced.
+    [won't need if tool calling is used]
     """
-    import re
-    solutions = []
     # Extract all wrapped solutions
-    pattern = r'<<<SOLUTION>>>\s*(.*?)\s*<<<END>>>'
-    wrapped_solutions = re.findall(pattern, response, re.DOTALL)
+    # pattern = r'<<<SOLUTION>>>\s*(.*?)\s*<<<END>>>'
+    # wrapped_solutions = re.findall(pattern, response, re.DOTALL)
 
+    # if wrapped_solutions:
+    #     if VERBOSE:
+    #         print(f"Found {len(wrapped_solutions)} wrapped solution(s) in LLM response.")
+    #     solutions = refine_solution_from_wrapped(wrapped_solutions, VERBOSE)
+    # else:
+    #     print("No wrapped solution found. Attempting to extract solution directly.")
+
+    solutions = refine_solution_from_wrapped(response, VERBOSE)
+    
+    return solutions    
+
+def refine_solution_from_wrapped(wrapped_solutions: list[str], VERBOSE: bool) -> list[str]:
+    """
+    Refines solutions extracted from wrapped markers by ensuring they are complete S-expressions.
+    Returns a list of refined solutions.
+    """    
+    solutions = []
     for wrapped in wrapped_solutions:
         # Find the next occurrence of (define-fun
         start_idx = wrapped.find("(define-fun")
@@ -315,12 +331,11 @@ def extract_solution_from_response(response: str, VERBOSE: str) -> list[str]:
                 print(f"WARNING: Unbalanced parentheses. Fixed solution to balance parentheses\n")
 
     if not solutions and VERBOSE:
-        print("WARNING: No solution found between <<<SOLUTION>>> and <<<END>>> markers.")
+        print("WARNING: No solution found in LLM response.\n")
 
     return solutions
 
 def get_synth_func_name(problem_spec: str) -> str:
-    import re
     match = re.search(r'\(synth-fun\s+([^\s\(\)]+)', problem_spec)
     if match:
         return match.group(1)
@@ -404,7 +419,8 @@ def prepare_format_instruction() -> str:
     """
     Prepares the format instruction for the LLM.
     """
-    instruction = "Wrap the entire solution between the markers <<<SOLUTION>>> and <<<END>>> with no extra text or explanation.\n"
+    instruction = ""
+    # instruction += "Wrap the entire solution between the markers <<<SOLUTION>>> and <<<END>>> with no extra text or explanation.\n"
     instruction += "Provide only the solution, nothing else. Make sure to use use smt-lib syntax. \
 You don't need to include the reasoning or the problem specification in your response.\n\n"
     return instruction
@@ -416,7 +432,6 @@ def get_func_signature(text: str, is_sol: bool):
     Returns (func_name, arg_list, return_type).
     arg_list is a list of tuples: [(arg_name, arg_type), ...]
     """
-    import re
     if is_sol:
         # (define-fun funcName ((argName argType) ...) returnType ...)
         pattern = r'\(define-fun\s+([^\s\(\)]+)\s+\((.*?)\)\s+([^\s\(\)]+)'
