@@ -36,9 +36,9 @@ def example_pair_context():
 
 (check-synth)
 """
-    solution_max = """
+    solution_max = """<<<SOLUTION>>>
 (define-fun max2 ((x Int) (y Int)) Int (ite (>= (+ x (* (- 1) y)) 0) x y))
-"""
+<<<END>>>"""
 
     problem_spec_small = """(set-logic LIA)
 
@@ -51,9 +51,9 @@ def example_pair_context():
 
 (check-synth)
 """
-    solution_small = """
+    solution_small = """<<<SOLUTION>>>
 (define-fun f ((x Int) (y Int)) Int (ite (<= y x) x y))
-"""
+<<<END>>>"""
 
     example_pair_context = (
         "Here are some examples of SyGuS problem specifications and their corresponding solutions as context, you don't need to solve them, they are given just as examples.\n\n"
@@ -64,7 +64,6 @@ def example_pair_context():
     example_pair_context += f"Solution 2:\n{solution_small}\n\n"
 
     return example_pair_context
-
 def parse_output_all_constraints(problem_spec: str, output: str):
     """
     Parses the output from cvc5 and maps each constraint to whether it failed or not.
@@ -421,8 +420,7 @@ def prepare_format_instruction() -> str:
     """
     Prepares the format instruction for the LLM.
     """
-    instruction = ""
-    # instruction += "Wrap the entire solution between the markers <<<SOLUTION>>> and <<<END>>> with no extra text or explanation.\n"
+    instruction = "Wrap the entire solution between the markers <<<SOLUTION>>> and <<<END>>> with no extra text or explanation.\n"
     instruction += "Provide only the solution, nothing else. Make sure to use use smt-lib syntax. \
 You don't need to include the reasoning or the problem specification in your response.\n\n"
     return instruction

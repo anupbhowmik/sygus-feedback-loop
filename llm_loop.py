@@ -32,11 +32,11 @@ if __name__ == "__main__":
     # print(f"cvc5 output:\n{output}")
     
     # LLM USAGE
-    model_name = constants.OLLAMA_GPT_OSS_20B
+    model_name = constants.OLLAMA_CODELLAMA_7B
     model = get_ollama_model(model_name)
     print(f"Using model: {model_name}")
 
-    model_with_structure = model.with_structured_output(Solution)
+    # model_with_structure = model.with_structured_output(Solution)
 
     solution_history = []
     conversation_history = []  # Track full prompt-response history
@@ -71,8 +71,10 @@ if __name__ == "__main__":
         try:
             if VERBOSE:
                 print(f"\n=================\nPrompt:\n{prompt}\n=================\n")
-            ai_response = model_with_structure.invoke(prompt)
-            ai_resp_content = ai_response
+
+            ai_response = model.invoke(prompt)
+            ai_resp_content = ai_response.content.strip()
+            
             if VERBOSE:
                 print(f"\n=================\nLLM Response:\n{ai_resp_content}\n=================\n")
         except Exception as e:
