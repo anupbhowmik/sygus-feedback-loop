@@ -223,7 +223,7 @@ if __name__ == "__main__":
             solution_dir.mkdir(parents=True, exist_ok=True)
             solution_filename = solution_dir / f"{input_stem}_solution.smt2"
             with open(solution_filename, "w") as sol_file:
-                sol_file.write(candidate_solution)
+                sol_file.write(smt2_spec)
             print(f"Saved correct solution to: {solution_filename}")
             
             break
