@@ -337,6 +337,9 @@ def extract_solution_from_response(response: str, VERBOSE: str) -> list[str]:
             print("No wrapped solution found. Attempting to extract solution directly using parentheses.")
         solutions = extract_solution_using_parenthesis(response, VERBOSE)
 
+    for i in range(len(solutions)):
+        solutions[i] = handle_negative_numbers(solutions[i])
+
     return solutions
 
 def refine_solution_from_wrapped(wrapped_solutions: list[str], VERBOSE: bool) -> list[str]:
@@ -593,3 +596,11 @@ def add_return_type_to_solution(solution: str, problem_spec: str) -> str:
 
     # else return type likely present; do nothing
     return solution
+
+def handle_negative_numbers(snippet: str) -> str:
+    """
+    Replace -<digits> with (- <digits>), but not if already in parentheses
+    Negative lookbehind to avoid matching if already in (- <digits>)
+    """
+    pattern = r'(?<!\()\B-(\d+)\b'
+    return re.sub(pattern, r'(- \1)', snippet)

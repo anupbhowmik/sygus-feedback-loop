@@ -1,6 +1,6 @@
 from checker import check_sygus_solution
 from convert import convert_sygus_to_smt2_per_constraint, get_constraints
-from llm import get_ollama_model, constants, generate_init_prompt, prepare_context_from_failure, prepare_context_from_error, extract_solution_from_response, prepare_context_for_no_solution, prepare_context_for_tricks, check_for_tricks, parse_output_get_counterexample, get_func_signature, prepare_context_for_argument_mismatch, add_return_type_to_solution, fix_synth_func_names, GenerateSolution
+from llm import get_ollama_model, constants, generate_init_prompt, prepare_context_from_failure, prepare_context_from_error, extract_solution_from_response, prepare_context_for_no_solution, prepare_context_for_tricks, check_for_tricks, parse_output_get_counterexample, get_func_signature, prepare_context_for_argument_mismatch, add_return_type_to_solution, fix_synth_func_names, handle_negative_numbers
 import argparse
 import time
 import csv
@@ -27,12 +27,15 @@ if __name__ == "__main__":
     with open(args.p, "r") as f:
         problem_spec = f.read()
 
+    # handle negative numbers in the problem spec
+    problem_spec = handle_negative_numbers(problem_spec)
+
     # candidate_solution = args.s
     # output = check_sygus_solution(problem_spec, candidate_solution, 0, args.o)
     # print(f"cvc5 output:\n{output}")
     
     # LLM USAGE
-    model_name = constants.OLLAMA_GPT_OSS_20B
+    model_name = constants.OLLAMA_CODELLAMA_7B
     model = get_ollama_model(model_name)
     print(f"Using model: {model_name}")
 
@@ -215,11 +218,16 @@ if __name__ == "__main__":
             success = True
             termination_reason = "solved"
             # save the correct solution to a file
-            # save_file = args.p + "_solution.txt"
-            # with open(save_file, "w") as f:
-            #     f.write(candidate_solution)
-            # print(f"Correct solution saved to {save_file}")
+            input_stem = Path(args.p).stem
+            solution_dir = Path(f"logs/{input_stem}")
+            solution_dir.mkdir(parents=True, exist_ok=True)
+            solution_filename = solution_dir / f"{input_stem}_solution.smt2"
+            with open(solution_filename, "w") as sol_file:
+                sol_file.write(candidate_solution)
+            print(f"Saved correct solution to: {solution_filename}")
+            
             break
+
         elif any(status['status'].lower() == "error" for status in constraint_status):
             print("Error thrown from cvc5.")
 

@@ -1,169 +1,72 @@
 import re
 
-def extract_solution_using_parenthesis(response: str, VERBOSE: str) -> list[str]:
+def handle_negative_numbers(snippet: str) -> str:
     """
-    Extracts SyGuS solutions from the LLM response.
-    If multiple solutions are present, extracts all of them.
+    Replace -<digits> with (- <digits>), but not if already in parentheses
+    Negative lookbehind to avoid matching if already in (- <digits>)
     """
-    solutions = []
-    start_pos = 0
+    pattern = r'(?<!\()\B-(\d+)\b'
+    return re.sub(pattern, r'(- \1)', snippet)
 
-    while True:
-        # Find the next occurrence of (define-fun
-        start_idx = response.find("(define-fun", start_pos)
-        if start_idx == -1:
-            break
-
-        # Find the matching closing parenthesis
-        paren_count = 0
-        end_idx = start_idx
-        found_complete = False
-
-        for i in range(start_idx, len(response)):
-            if response[i] == '(':
-                paren_count += 1
-            elif response[i] == ')':
-                paren_count -= 1
-                if paren_count == 0:
-                    end_idx = i + 1
-                    found_complete = True
-                    break
-
-        if found_complete and paren_count == 0:
-            solution = response[start_idx:end_idx].strip()
-            solutions.append(solution)
-            start_pos = end_idx
-        else:
-            if VERBOSE:
-                print(f"SYNTAX-ERROR: incomplete/missing closing parenthesis.")
-            # Attempt to fix by balancing parentheses
-            partial = response[start_idx:]
-            open_paren = partial.count('(')
-            close_paren = partial.count(')')
-            if open_paren > close_paren:
-                # Add missing closing parens
-                fixed = partial + (')' * (open_paren - close_paren))
-            elif close_paren > open_paren:
-                # Remove excess closing parens
-                excess = close_paren - open_paren
-                fixed = partial
-                for _ in range(excess):
-                    idx = fixed.rfind(')')
-                    if idx != -1:
-                        fixed = fixed[:idx] + fixed[idx+1:]
-            else:
-                fixed = partial
-            solutions.append(fixed.strip())
-            break
-
-    if not solutions and "(define-fun" not in response and VERBOSE:
-        print("SYNTAX-ERROR: No solution found: '(define-fun' not present in response.")
-
-    return solutions
-
-
-def extract_solution_from_response(response: str, VERBOSE: str) -> list[str]:
-    """
-    Extracts SyGuS solutions from the LLM response.
-    If multiple solutions are present, extracts all of them and ensures parentheses are balanced.
-    Falls back to extract_solution_using_parenthesis if no wrapped solution is found.
-    [won't need if tool calling is used]
-    """
-    solutions = []
-    # Extract all wrapped solutions
-    pattern = r'<<<SOLUTION>>>\s*(.*?)\s*<<<END>>>'
-    wrapped_solutions = re.findall(pattern, response, re.DOTALL)
-
-    if wrapped_solutions:
-        if VERBOSE:
-            print(f"Found {len(wrapped_solutions)} wrapped solution(s) in LLM response.")
-        solutions = refine_solution_from_wrapped(wrapped_solutions, VERBOSE)
-    else:
-        if VERBOSE:
-            print("No wrapped solution found. Attempting to extract solution directly using parentheses.")
-        solutions = extract_solution_using_parenthesis(response, VERBOSE)
-
-    return solutions
-
-def refine_solution_from_wrapped(wrapped_solutions: list[str], VERBOSE: bool) -> list[str]:
-    """
-    Refines solutions extracted from wrapped markers by ensuring they are complete S-expressions.
-    Returns a list of refined solutions.
-    """    
-    solutions = []
-    for wrapped in wrapped_solutions:
-        # Find the next occurrence of (define-fun
-        start_idx = wrapped.find("(define-fun")
-        if start_idx == -1:
-            if VERBOSE:
-                print("SYNTAX-ERROR: '(define-fun' not present in wrapped solution.")
-            continue
-
-        # Find the matching closing parenthesis
-        paren_count = 0
-        end_idx = start_idx
-        found_complete = False
-
-        for i in range(start_idx, len(wrapped)):
-            if wrapped[i] == '(':
-                paren_count += 1
-            elif wrapped[i] == ')':
-                paren_count -= 1
-                if paren_count == 0:
-                    end_idx = i + 1
-                    found_complete = True
-                    break
-
-        if found_complete and paren_count == 0:
-            solution = wrapped[start_idx:end_idx].strip()
-            solutions.append(solution)
-        else:
-            if VERBOSE:
-                print(f"SYNTAX-ERROR: incomplete/missing closing parenthesis in wrapped solution.")
-            # Attempt to fix by balancing parentheses
-            partial = wrapped[start_idx:]
-            open_paren = partial.count('(')
-            close_paren = partial.count(')')
-            if open_paren > close_paren:
-                fixed = partial + (')' * (open_paren - close_paren))
-            elif close_paren > open_paren:
-                excess = close_paren - open_paren
-                fixed = partial
-                for _ in range(excess):
-                    idx = fixed.rfind(')')
-                    if idx != -1:
-                        fixed = fixed[:idx] + fixed[idx+1:]
-            else:
-                fixed = partial
-            solutions.append(fixed.strip())
-            if VERBOSE:
-                print(f"WARNING: Unbalanced parentheses. Fixed solution to balance parentheses\n")
-
-    if not solutions and VERBOSE:
-        print("WARNING: No solution found in LLM response.\n")
-
-    return solutions
-
-def main():
-    # Example usage
-    response = """
-    Here is the solution you requested:
-    <<<SOLUTION>>>
-    (define-fun f ((x Int)) Int
-        (+ x 1))
-    <<<END>>>
-
-    (define-fun f ((x Int)) Int
-        (+ x 2))
-    <<<END>>>
-    Let me know if you need anything else.
-    """
-
-    VERBOSE = True
-    solutions = extract_solution_from_response(response, VERBOSE)
-    for sol in solutions:
-        print("Extracted Solution:")
-        print(sol)
-
+# Example usage:
 if __name__ == "__main__":
-    main()
+    example_spec = '''
+    (set-logic LIA)
+
+(synth-fun eq2 ((x Int) (y Int) (z Int) (z1 Int)) Int)
+
+(define-fun im ((b1 Bool) (b2 Bool) (b3 Bool)) Bool
+    (or (and b1 b2) (and (not b1) b3)))
+(define-fun plus_2 ((b1 Int) (b2 Int)) Int
+    (+ b1 b2))
+(define-fun plus_3 ((b1 Int) (b2 Int) (b3 Int)) Int
+    (+ (+ b1 b2) b3))
+(define-fun plus_4 ((b1 Int) (b2 Int) (b3 Int) (b4 Int)) Int
+    (+ (plus_3 b1 b2 b3) b4))
+(define-fun plus_5 ((b1 Int) (b2 Int) (b3 Int) (b4 Int) (b5 Int)) Int
+    (+ (plus_4 b1 b2 b3 b4) b5))
+(define-fun plus_6 ((b1 Int) (b2 Int) (b3 Int) (b4 Int) (b5 Int) (b6 Int)) Int
+    (+ (plus_5 b1 b2 b3 b4 b5) b6))
+(define-fun plus_7 ((b1 Int) (b2 Int) (b3 Int) (b4 Int) (b5 Int) (b6 Int) (b7 Int)) Int
+    (+ (plus_6 b1 b2 b3 b4 b5 b6) b7))
+(define-fun plus_8 ((b1 Int) (b2 Int) (b3 Int) (b4 Int) (b5 Int) (b6 Int) (b7 Int) (b8 Int)) Int
+    (+ (plus_7 b1 b2 b3 b4 b5 b6 b7) b8))
+(define-fun plus_9 ((b1 Int) (b2 Int) (b3 Int) (b4 Int) (b5 Int) (b6 Int) (b7 Int) (b8 Int) (b9 Int)) Int
+    (+ (plus_8 b1 b2 b3 b4 b5 b6 b7 b8) b9))
+(define-fun or3 ((b1 Bool) (b2 Bool) (b3 Bool)) Bool
+    (or (or b1 b2) b3))
+(define-fun one_times ((b1 Int)) Int
+    b1)
+(define-fun two_times ((b1 Int)) Int
+    (plus_2 b1 b1))
+(define-fun three_times ((b1 Int)) Int
+    (plus_3 b1 b1 b1))
+(define-fun four_times ((b1 Int)) Int
+    (plus_4 b1 b1 b1 b1))
+(define-fun five_times ((b1 Int)) Int
+    (plus_5 b1 b1 b1 b1 b1))
+(define-fun six_times ((b1 Int)) Int
+    (plus_6 b1 b1 b1 b1 b1 b1))
+(define-fun seven_times ((b1 Int)) Int
+    (plus_7 b1 b1 b1 b1 b1 b1 b1))
+(define-fun nine_times ((b1 Int)) Int
+    (plus_9 b1 b1 b1 b1 b1 b1 b1 b1 b1))
+(define-fun ten_times ((b1 Int)) Int
+    (plus_9 b1 b1 b1 b1 b1 b1 b1 b1 (plus_2 b1 b1)))
+(define-fun eleven_times ((b1 Int)) Int
+    (plus_8 b1 b1 b1 b1 b1 b1 (plus_3 b1 b1 b1) (plus_2 b1 b1)))
+(define-fun minus ((b1 Int)) Int
+    (- 0 b1))
+(declare-var x Int)
+(declare-var y Int)
+(declare-var z Int)
+(declare-var z1 Int)
+(constraint (im (>= (plus_3 (two_times x) z (minus z1)) (minus y)) (im (<= (plus_2 x z1) y) (= (eq2 x y z z1) (plus_4 (ten_times x) (two_times (ten_times y)) (three_times (five_times z)) -99)) (= (eq2 x y z z1) (plus_3 (nine_times y) (five_times (five_times z1)) -11))) (im (<= (plus_3 x (three_times z) z1) -9) (= (eq2 x y z z1) (plus_5 (eleven_times x) (five_times (three_times y)) (three_times (ten_times z)) (two_times (eleven_times z1)) 11)) (= (eq2 x y z z1) (plus_4 (four_times (four_times x)) (three_times (six_times z)) (five_times z1) -55)))))
+
+(check-synth)
+
+
+'''
+    converted_spec = handle_negative_numbers(example_spec)
+    print("Original Spec:\n", example_spec)
+    print("Converted Spec:\n", converted_spec)
