@@ -11,7 +11,7 @@ def generate_init_prompt(problem_spec: str) -> str:
     init_prompt += f"You will be provided with a SyGuS problem specification. \
 Your task is to generate a valid SyGuS solution that adheres to the constraints and requirements outlined in the specification.\
 Ensure that your solution is syntactically correct and logically consistent with the problem statement.\n\n{problem_spec}."
-    init_prompt += "\n\nMake sure to use the provided tools to generate solution.\n"
+
     return init_prompt
 
 def example_pair_context():

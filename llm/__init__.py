@@ -19,11 +19,8 @@ from .tools import (
 )
 
 from .schema import (
-    Solution,
-)
-
-from .schema import (
-    Solution,
+    GenerateSolution,
+    Movie,
 )
 
 from .context import (

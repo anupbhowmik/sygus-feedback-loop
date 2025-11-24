@@ -1,6 +1,6 @@
 from checker import check_sygus_solution
 from convert import convert_sygus_to_smt2_per_constraint, get_constraints
-from llm import get_ollama_model, constants, generate_init_prompt, prepare_context_from_failure, prepare_context_from_error, extract_solution_from_response, prepare_context_for_no_solution, prepare_context_for_tricks, check_for_tricks, parse_output_get_counterexample, get_func_signature, prepare_context_for_argument_mismatch, add_return_type_to_solution, fix_synth_func_names, Solution
+from llm import get_ollama_model, constants, generate_init_prompt, prepare_context_from_failure, prepare_context_from_error, extract_solution_from_response, prepare_context_for_no_solution, prepare_context_for_tricks, check_for_tricks, parse_output_get_counterexample, get_func_signature, prepare_context_for_argument_mismatch, add_return_type_to_solution, fix_synth_func_names, GenerateSolution
 import argparse
 import time
 import csv
@@ -36,7 +36,7 @@ if __name__ == "__main__":
     model = get_ollama_model(model_name)
     print(f"Using model: {model_name}")
 
-    # model_with_structure = model.with_structured_output(Solution)
+    model_with_structure = model.with_structured_output(GenerateSolution)
 
     solution_history = []
     conversation_history = []  # Track full prompt-response history
@@ -72,9 +72,22 @@ if __name__ == "__main__":
             if VERBOSE:
                 print(f"\n=================\nPrompt:\n{prompt}\n=================\n")
 
-            ai_response = model.invoke(prompt)
-            ai_resp_content = ai_response.content.strip()
+            # ai_response = model.invoke(prompt)
+            ai_response = model_with_structure.invoke(prompt)
+
+            # ai_resp_content = ai_response.content.strip()
+            ai_resp_content = ai_response
             
+            if not ai_response:
+                print("Received empty response from LLM.")
+                continue
+            if isinstance(ai_response, GenerateSolution):
+                solution_text = ai_response.solution
+                reasoning_text = ai_response.reasoning
+            else:
+                print("Invalid response structure from LLM.")
+
+
             if VERBOSE:
                 print(f"\n=================\nLLM Response:\n{ai_resp_content}\n=================\n")
         except Exception as e:
@@ -88,7 +101,7 @@ if __name__ == "__main__":
             "response": ai_resp_content
         })
 
-        extracted_solutions = extract_solution_from_response(ai_resp_content, VERBOSE)
+        extracted_solutions = extract_solution_from_response(solution_text, VERBOSE)
         proposed_solutions = fix_synth_func_names(problem_spec, extracted_solutions)
         # for sol in proposed_solutions:
         #     sol = add_return_type_to_solution(sol, problem_spec)
