@@ -104,7 +104,7 @@ if __name__ == "__main__":
                 candidate_solution = solution # pick the first new solution
                 break
 
-        if not candidate_solution:
+        if not candidate_solution and proposed_solutions and len(proposed_solutions) > 0:
             repeated_solution_count += 1
         else:
             unique_solutions_set.add(candidate_solution)

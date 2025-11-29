@@ -1,7 +1,6 @@
-from llm import get_ollama_model, constants, generate_init_prompt, prepare_context_from_failure, prepare_context_from_error, extract_solution_from_response, prepare_context_for_no_solution, prepare_context_for_tricks, check_for_tricks, parse_output_get_counterexample, get_func_signature, prepare_context_for_argument_mismatch, add_return_type_to_solution, fix_synth_func_names, GenerateSolution, Movie
+from llm import get_ollama_model, constants, GenerateSolution
 
-
-model_name = constants.OLLAMA_LLAMA_4_LATEST
+model_name = constants.OLLAMA_GPT_OSS_20B
 model = get_ollama_model(model_name)
 print(f"Using model: {model_name}")
 

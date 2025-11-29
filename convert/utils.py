@@ -3,8 +3,9 @@ import re
 def convert_declare_var_to_fun(sygus_content: str) -> str:
     """
     Converts all (declare-var x Int) to (declare-fun x () Int) in the given SyGuS content.
+    Handles optional spaces after '(' and before ')'.
     """
-    pattern = r'\(declare-var\s+([^\s\)]+)\s+([^\s\)]+)\)'
+    pattern = r'\(\s*declare-var\s+([^\s\)]+)\s+([^\s\)]+)\s*\)'
     replacement = r'(declare-fun \1 () \2)'
     return re.sub(pattern, replacement, sygus_content)
 
@@ -150,6 +151,52 @@ def remove_constraints(content: str, constraints: list[str]) -> str:
         content_wo_constraints = re.sub(pattern, '', content_wo_constraints, count=1)
     return content_wo_constraints
 
+def insert_after_last_declare_fun(content: str, solution: str) -> str:
+    """
+    Inserts the solution string after the last (declare-fun ...) line in the content.
+    If no (declare-fun ...) is found, appends at the end.
+    """
+    lines = content.splitlines(keepends=True)
+    last_idx = -1
+    for idx, line in enumerate(lines):
+        if line.strip().startswith("(declare-fun"):
+            last_idx = idx
+    if last_idx == -1:
+        # No declare-fun found, append at end
+        return content.rstrip() + "\n\n" + solution + "\n"
+    # Insert after the last declare-fun line
+    return (
+        "".join(lines[:last_idx + 1])
+        + "\n"
+        + solution
+        + "\n"
+        + "".join(lines[last_idx + 1:])
+    )
+
+def remove_synth_fun_blocks(content: str) -> str:
+    """
+    Removes all (synth-fun ...) blocks (including grammar definitions) from the content.
+    """
+    lines = content.splitlines(keepends=True)
+    modified_lines = []
+    skipping = False
+    paren_count = 0
+
+    for line in lines:
+        if not skipping and "(synth-fun" in line:
+            # Start skipping lines until the synth-fun block ends
+            skipping = True
+            paren_count = line.count('(') - line.count(')')
+            continue
+        if skipping:
+            paren_count += line.count('(') - line.count(')')
+            if paren_count <= 0:
+                skipping = False
+            continue
+        else:
+            modified_lines.append(line)
+    return "".join(modified_lines)
+
 def convert_sygus_to_smt2_per_constraint(sygus_spec: str, solution: str) -> list[str]:
     """
     For each SyGuS constraint, produce a separate SMT2 content that asserts only that single
@@ -162,9 +209,11 @@ def convert_sygus_to_smt2_per_constraint(sygus_spec: str, solution: str) -> list
 
     # Build a base (no constraints, replaced synth-fun, converted declares)
     base = remove_check_synth(sygus_spec)
-    base = replace_synth_fun_with_solution(base, solution)
+    # base = replace_synth_fun_with_solution(base, solution)
+    base = remove_synth_fun_blocks(base)
     base = convert_declare_var_to_fun(base)
     base = remove_constraints(base, constraints).rstrip()
+    base = insert_after_last_declare_fun(base, solution)
 
     outputs: list[str] = []
     for c in constraints:
